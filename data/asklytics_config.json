@@ -1,0 +1,11 @@
+{
+  "db": {
+    "driver": "",
+    "server": "prod-sqlfci",
+    "database": "CustomAppsd365",
+    "trusted_connection": false,
+    "uid": "sa",
+    "pwd": "ecs@123"
+  },
+  "dialect": "tsql"
+}

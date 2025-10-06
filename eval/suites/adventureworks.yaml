@@ -1,0 +1,6 @@
+
+name: AdventureWorks Smoke
+cases:
+  - q: "Top 10 customers by total sales last quarter"
+  - q: "Monthly sales trend for the last 12 months"
+  - q: "Return rate by product category this year"

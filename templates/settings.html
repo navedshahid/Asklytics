@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Analytica — Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121a2b; --muted:#8da2c0; --txt:#e7edf7;
+      --primary:#5b8cff; --ok:#28c76f; --warn:#f0ad4e; --err:#ff6b6b;
+      --border:#24324a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:var(--bg); color:var(--txt); font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;}
+    .wrap{max-width:1080px; margin:32px auto; padding:0 16px;}
+    h1{font-size:24px; margin:0 0 16px}
+    h2{font-size:18px; margin:28px 0 8px; color:#cdd7ea}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px}
+    .row{display:flex; gap:12px; align-items:center; margin:8px 0}
+    .label{min-width:180px; color:var(--muted)}
+    input[type=text], input[type=password], input[type=number], select{
+      background:#0f1729; color:var(--txt); border:1px solid var(--border);
+      border-radius:8px; padding:10px 12px; width:320px; outline:none;
+    }
+    input[type=checkbox]{transform:scale(1.1)}
+    .btn{border:0; border-radius:10px; padding:10px 14px; cursor:pointer; color:#fff; font-weight:600}
+    .btn:disabled{opacity:.55; cursor:not-allowed}
+    .btn.primary{background:var(--primary)}
+    .btn.ok{background:var(--ok)}
+    .btn.warn{background:var(--warn)}
+    .btn.ghost{background:transparent; border:1px solid var(--border); color:var(--muted)}
+    .muted{color:var(--muted)}
+    .divider{height:1px; background:var(--border); margin:20px 0}
+    #tables-panel{display:grid; grid-template-columns:1fr 1fr; gap:8px; border:1px solid var(--border); border-radius:10px; padding:10px; max-height:300px; overflow:auto; background:#0f1729}
+    .table-chip{display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid #1d2941; background:#101a2d}
+    .toolbar{display:flex; gap:10px; align-items:center}
+    .pill{background:#0f182b; border:1px solid var(--border); color:var(--muted); padding:6px 10px; border-radius:999px; font-size:12px}
+    .right{margin-left:auto}
+    .search{flex:1}
+    .spinner{width:16px;height:16px;border-radius:50%; border:3px solid #2a3b5d;border-top-color:#9db4ff;animation:spin .9s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{
+      position:fixed; right:18px; bottom:18px; background:#16233c; color:#e8f0ff;
+      padding:12px 14px; border:1px solid #28406e; border-radius:12px; box-shadow:0 8px 30px rgba(16,29,58,.4);
+      display:flex; gap:10px; align-items:center; max-width:60vw;
+    }
+    .toast.ok{border-color:#1e7f4a}
+    .toast.err{border-color:#7f2323}
+    .toast .dot{width:10px;height:10px;border-radius:50%}
+    .toast.ok .dot{background:var(--ok)} .toast.err .dot{background:var(--err)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Settings</h1>
+
+  <!-- DB & Dialect -->
+  <div class="card">
+    <h2>Database Configuration</h2>
+    <div class="row"><div class="label">Dialect (Server Type)</div>
+      <select id="dialect">
+        <option value="tsql">Microsoft SQL Server</option>
+        <option value="postgres" disabled>PostgreSQL (soon)</option>
+        <option value="mysql" disabled>MySQL (soon)</option>
+      </select>
+      <span class="pill" id="dialect-pill"></span>
+    </div>
+    <div class="row"><div class="label">ODBC Driver</div>
+      <input id="driver" type="text" placeholder="ODBC Driver 17 for SQL Server"/>
+      <span class="muted" id="drivers-hint"></span>
+    </div>
+    <div class="row"><div class="label">Server</div><input id="server" type="text" placeholder="localhost,1433"/></div>
+    <div class="row"><div class="label">Database</div><input id="database" type="text" placeholder="AdventureWorks2017"/></div>
+    <div class="row"><div class="label">Trusted Connection</div><input id="trusted" type="checkbox"/></div>
+    <div class="row"><div class="label">User</div><input id="uid" type="text" placeholder="report_user"/></div>
+    <div class="row"><div class="label">Password</div><input id="pwd" type="password" placeholder="••••••••"/></div>
+    <div class="row"><div class="label">Timeout (s)</div><input id="timeout" type="number" value="30" min="5" style="width:120px"/></div>
+
+    <div class="row toolbar">
+      <button id="btn-test" class="btn ghost">⚡ Test</button>
+      <button id="btn-save" class="btn primary">💾 Save</button>
+      <span id="status-db" class="muted"></span>
+      <span class="right"></span>
+    </div>
+  </div>
+
+  <!-- Table Selection -->
+  <div class="card">
+    <h2>Tables (choose before building)</h2>
+    <div class="toolbar">
+      <input id="table-search" class="search" type="text" placeholder="Search tables…"/>
+      <button id="btn-select-all" class="btn ghost">Select All</button>
+      <button id="btn-select-none" class="btn ghost">Select None</button>
+      <span class="pill" id="count-pill">0 selected</span>
+      <span class="right"></span>
+      <button id="btn-save-tables" class="btn ok">Save Selected Tables</button>
+      <span id="status-tables" class="muted"></span>
+    </div>
+    <div id="tables-panel"></div>
+  </div>
+
+  <!-- Build -->
+  <div class="card">
+    <h2>Knowledge Base</h2>
+    <div class="toolbar">
+      <button id="btn-build" class="btn ok">🧱 Build/Rebuild Embeddings</button>
+      <button id="btn-reload" class="btn warn">↻ Reload Knowledge Base</button>
+      <span id="status-build" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="muted">Flow: Save DB & Dialect → Pick Tables → Save → Build/Rebuild → Back to Chat.</div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"><span class="dot"></span><span id="toast-msg"></span></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+function toast(msg, kind="ok", ms=2600){
+  const t = $("#toast");
+  $("#toast-msg").textContent = msg;
+  t.className = "toast " + (kind === "error" ? "err" : "ok");
+  t.style.display = "flex";
+  setTimeout(()=> t.style.display = "none", ms);
+}
+
+async function getJSON(url){ const r = await fetch(url); return r.json(); }
+async function postJSON(url, body){
+  const r = await fetch(url,{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body||{})});
+  return r.json();
+}
+function busy(el, on=true){ if(!el) return; el.disabled = on; if(on){el.dataset._label=el.textContent; el.innerHTML=`<span class="spinner"></span> ${el.textContent}`;} else {el.innerHTML=el.dataset._label||el.textContent;} }
+
+/* ---------- DB + Dialect ---------- */
+async function hydrateStatus(){
+  const s = await getJSON("/api/status").catch(()=>({}));
+  $("#dialect-pill").textContent = s.dialect ? `Dialect: ${s.dialect}` : "";
+  if (s.drivers_detected && s.drivers_detected.length){
+    $("#drivers-hint").textContent = "Installed: " + s.drivers_detected.join(", ");
+  }
+}
+async function loadDbInfo(){
+  const j = await getJSON("/api/db_info").catch(()=> ({}));
+  if(!j) return;
+  if(j.dialect) $("#dialect").value = j.dialect;
+  if(j.driver) $("#driver").value = j.driver;
+  if(j.server) $("#server").value = j.server;
+  if(j.database) $("#database").value = j.database;
+  if(j.trusted_connection !== undefined) $("#trusted").checked = !!j.trusted_connection;
+}
+
+async function testConn(){
+  busy($("#btn-test"), true);
+  $("#status-db").textContent = "";
+  const payload = {
+    driver: $("#driver").value,
+    server: $("#server").value,
+    database: $("#database").value,
+    trusted_connection: $("#trusted").checked,
+    uid: $("#uid").value,
+    pwd: $("#pwd").value,
+    timeout: parseInt($("#timeout").value||"30",10)
+  };
+  const j = await postJSON("/api/settings/db/test", payload);
+  busy($("#btn-test"), false);
+  if(j.status === "success"){ toast(j.message, "ok"); $("#status-db").textContent = j.message; }
+  else { toast(j.message || "Connection failed", "error", 4500); $("#status-db").textContent = j.message||"Error"; }
+}
+
+async function saveConn(){
+  busy($("#btn-save"), true);
+  $("#status-db").textContent = "";
+  const dialect = $("#dialect").value;
+  const db = {
+    driver: $("#driver").value,
+    server: $("#server").value,
+    database: $("#database").value,
+    trusted_connection: $("#trusted").checked,
+    uid: $("#uid").value,
+    pwd: $("#pwd").value
+  };
+  const j = await postJSON("/api/settings/db/save", { db, dialect });
+  busy($("#btn-save"), false);
+  if(j.status === "success"){
+    toast("Configuration saved", "ok");
+    $("#dialect-pill").textContent = `Dialect: ${j.dialect}`;
+    await loadTablesFromDb();   // <-- immediately load tables after save
+  } else {
+    toast(j.message || "Save failed", "error");
+  }
+}
+
+/* ---------- Tables ---------- */
+let TABLE_CACHE = [];  // [{name, selected}]
+function renderTables(){
+  const q = ($("#table-search").value || "").toLowerCase();
+  const panel = $("#tables-panel");
+  panel.innerHTML = "";
+  const list = TABLE_CACHE.filter(t => t.name.toLowerCase().includes(q));
+  list.forEach(t=>{
+    const id = "chk-" + t.name.replace(/\W/g,'_');
+    const row = document.createElement("label");
+    row.className = "table-chip";
+    row.innerHTML = `
+      <input type="checkbox" id="${id}" ${t.selected?'checked':''} data-name="${t.name}"/>
+      <span>${t.name}</span>
+    `;
+    panel.appendChild(row);
+  });
+  updateCount();
+}
+function updateCount(){
+  const n = $$("#tables-panel input[type=checkbox]:checked").length;
+  $("#count-pill").textContent = `${n} selected`;
+}
+function selectAll(flag){
+  $$("#tables-panel input[type=checkbox]").forEach(b => b.checked = flag);
+  // reflect in cache
+  const visible = new Set($$("#tables-panel input[type=checkbox]").map(b => b.getAttribute("data-name")));
+  TABLE_CACHE.forEach(t => { if(visible.has(t.name)) t.selected = flag; });
+  updateCount();
+}
+
+async function loadTablesFromDb(){
+  $("#status-tables").textContent = "Loading tables…";
+  const j = await getJSON("/api/db/tables").catch(()=>({status:"error"}));
+  if(j.status !== "success"){ $("#status-tables").textContent = j.message || "Failed to load."; toast("Could not load tables", "error"); return; }
+  TABLE_CACHE = j.tables || [];
+  renderTables();
+  $("#status-tables").textContent = `Loaded ${TABLE_CACHE.length} tables.`;
+}
+async function saveSelectedTables(){
+  // sync selections back to cache
+  $$("#tables-panel input[type=checkbox]").forEach(b=>{
+    const name = b.getAttribute("data-name");
+    const idx = TABLE_CACHE.findIndex(t => t.name === name);
+    if(idx >= 0) TABLE_CACHE[idx].selected = b.checked;
+  });
+  const chosen = TABLE_CACHE.filter(t => t.selected).map(t => t.name);
+  busy($("#btn-save-tables"), true);
+  const j = await postJSON("/api/catalog/tables/save", { tables: chosen });
+  busy($("#btn-save-tables"), false);
+  if(j.status === "success"){ toast(`Saved ${j.count} tables.`, "ok"); $("#status-tables").textContent = `Saved ${j.count} tables.`; }
+  else { toast("Save failed", "error"); }
+}
+
+/* ---------- Build & Reload ---------- */
+async function build(){
+  busy($("#btn-build"), true);
+  $("#status-build").textContent = "Building…";
+  const j = await postJSON("/api/training/run", {});
+  busy($("#btn-build"), false);
+  if(j.status === "success"){
+    toast(`Built. Indexed ${j.info?.table_count ?? "?"} tables.`, "ok");
+    $("#status-build").textContent = `Built. Indexed ${j.info?.table_count ?? "?"} tables.`;
+  } else {
+    toast(j.message || "Build failed", "error", 4500);
+    $("#status-build").textContent = j.message || "Build failed.";
+  }
+}
+async function reloadKb(){
+  busy($("#btn-reload"), true);
+  $("#status-build").textContent = "Reloading…";
+  const j = await postJSON("/api/faiss/reload", {});
+  busy($("#btn-reload"), false);
+  if(j.status === "success"){ toast(j.message, "ok"); $("#status-build").textContent = j.message; }
+  else { toast("Reload failed", "error"); }
+}
+
+/* ---------- events ---------- */
+$("#btn-test").addEventListener("click", testConn);
+$("#btn-save").addEventListener("click", saveConn);
+$("#btn-save-tables").addEventListener("click", saveSelectedTables);
+$("#btn-build").addEventListener("click", build);
+$("#btn-reload").addEventListener("click", reloadKb);
+$("#table-search").addEventListener("input", renderTables);
+$("#btn-select-all").addEventListener("click", ()=>selectAll(true));
+$("#btn-select-none").addEventListener("click", ()=>selectAll(false));
+document.addEventListener("change", e=>{
+  if(e.target.matches("#tables-panel input[type=checkbox]")) updateCount();
+});
+
+/* ---------- boot ---------- */
+(async function init(){
+  await hydrateStatus();
+  await loadDbInfo();     // show any saved values
+  // If DB already saved, try to load tables immediately
+  await loadTablesFromDb().catch(()=>{});
+})();
+</script>
+</body>
+</html>

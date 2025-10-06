@@ -1,0 +1,155 @@
+"""
+Flask API for QueryPilot Enterprise (MVP).
+
+Exposes endpoints:
+- POST /ask: NL question -> SQL -> Safe execution -> Results (JSON)
+- POST /sql/validate: Validate a raw SQL string against safety policy
+- POST /catalog/refresh: Build catalog JSONs + FAISS embeddings (T-SQL builder for now)
+- GET  /health: readiness/liveness
+
+Design:
+- Read-only by default; non-SELECT blocked in safety layer.
+- Separation: catalog, retrieval, prompting, safety, execution.
+- Streaming UI + DB settings live in compat/_bridge.py (registered as a blueprint).
+"""
+# app.py (top portion that matters)
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+from pydantic import BaseModel, ValidationError
+import traceback, time
+
+from catalog.loader import CatalogLoader
+from retrieval.selector import HybridSelector
+from prompting.generator import PromptGenerator
+from safety.sql_validator import SQLValidator, ValidationError as SQLValidationError
+from execution.tsql import SafeTSQLExecutor
+from utils.audit import AuditLogger
+from utils.models import ModelRunner, ModelProfiles
+from dotenv import load_dotenv
+load_dotenv()
+
+
+app = Flask(__name__, template_folder="templates")
+CORS(app)
+
+# Register the compat blueprint (endpoints for Settings + SSE)
+from compat._bridge import bp as asklytics_bp
+app.register_blueprint(asklytics_bp)
+
+
+# ---- Singletons (MVP) ----
+catalog = CatalogLoader(base_dir="./catalog/artifacts")
+selector = HybridSelector(base_dir="./catalog/artifacts")
+prompt_gen = PromptGenerator(template_dir="./prompting/templates")
+validator = SQLValidator()  # T-SQL validator for /ask endpoint
+executor = SafeTSQLExecutor(audit_path="./storage/audit.sqlite")  # reads DSN from QP_SQL_DSN
+audit = AuditLogger(db_path="./storage/audit.sqlite")
+model_runner = ModelRunner(profile=ModelProfiles.BALANCED)
+
+# ---- Schemas for /ask payload ----
+class AskPayload(BaseModel):
+    question: str
+    user_id: str | None = None
+    role: str | None = None          # reserved for RBAC/Privacy Lenses (future)
+    profile: str | None = None       # "fast" | "balanced" | "accurate"
+
+# ---- Simple pages (your existing UI) ----
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok", "ts": time.time()})
+
+@app.get("/")
+def home():
+    return render_template("index.html")
+
+@app.get("/settings")
+def settings_page():
+    return render_template("settings.html")
+
+# ---- SQL validation (JSON) ----
+@app.post("/sql/validate")
+def sql_validate():
+    sql = (request.json or {}).get("sql", "")
+    try:
+        validator.assert_safe(sql)
+        patched = validator.patch_sql(sql)
+        return jsonify({"ok": True, "reasons": [], "patched_sql": patched})
+    except SQLValidationError as e:
+        return jsonify({"ok": False, "reasons": e.reasons, "patched_sql": None})
+
+# ---- Catalog refresh (T-SQL builder path) ----
+@app.post("/catalog/refresh")
+def catalog_refresh():
+    """
+    Programmatic wrapper around the T-SQL catalog builder.
+    NOTE: The compat bridge has its own /api/training/run that calls the right builder
+    based on saved config; this endpoint is kept for direct admin/API use.
+    """
+    payload = request.json or {}
+    dsn = payload.get("dsn")
+    schemas = payload.get("schemas")
+    if isinstance(schemas, str):
+        schemas = [s.strip() for s in schemas.split(",") if s.strip()]
+    try:
+        from catalog.refresh_catalog_tsql import refresh_catalog
+        version_info = refresh_catalog(dsn=dsn, schemas=schemas, out_dir="./catalog/artifacts")
+        return jsonify({"ok": True, "version": version_info})
+    except Exception as ex:
+        return jsonify({"ok": False, "error": str(ex), "trace": traceback.format_exc()}), 500
+
+# ---- Ask (JSON) — non-streaming endpoint using T-SQL path ----
+# Your UI uses /api/ask/stream from the compat blueprint for SSE; this remains for JSON clients.
+@app.post("/ask")
+def ask():
+    try:
+        payload = AskPayload(**(request.json or {}))
+    except ValidationError as ve:
+        return jsonify({"ok": False, "error": ve.errors()}), 400
+
+    if payload.profile:
+        model_runner.set_profile(payload.profile)
+
+    # 1) Retrieval
+    retrieval = selector.select(question=payload.question, k_tables=6, k_columns=24)
+
+    # 2) Prompt (T-SQL template)
+    prompt = prompt_gen.render_tsql(
+        question=payload.question,
+        retrieval=retrieval,
+        policies=validator.policies_block()
+    )
+
+    # 3) Generate SQL
+    sql = model_runner.generate_sql(prompt)
+
+    # 4) Validate/Patch
+    try:
+        validator.assert_safe(sql)
+    except SQLValidationError:
+        sql_patched = validator.patch_sql(sql)
+        try:
+            validator.assert_safe(sql_patched)
+            sql = sql_patched
+        except SQLValidationError as e2:
+            audit.log(payload.user_id or "anonymous", payload.question, sql, success=False, reasons=e2.reasons)
+            return jsonify({"ok": False, "error": "SQL failed safety validation", "reasons": e2.reasons, "generated_sql": sql})
+
+    # 5) Execute
+    try:
+        df, meta = executor.execute(sql)
+        audit.log(payload.user_id or "anonymous", payload.question, sql, success=True, rows=meta.get("rowcount", 0))
+        explanation = selector.explain(retrieval)
+        return jsonify({
+            "ok": True,
+            "sql": sql,
+            "rows": df.to_dict(orient="records"),
+            "columns": list(df.columns),
+            "meta": meta,
+            "explanation": explanation
+        })
+    except Exception as ex:
+        audit.log(payload.user_id or "anonymous", payload.question, sql, success=False, reasons=[str(ex)])
+        return jsonify({"ok": False, "error": str(ex), "generated_sql": sql, "trace": traceback.format_exc()}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)

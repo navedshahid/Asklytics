@@ -1,0 +1,11 @@
+{
+  "db": {
+    "driver": "ODBC Driver 17 for SQL Server",
+    "dialect": "SQL Server",
+    "server": "prod-sqlfci",
+    "database": "CustomAppsD365",
+    "uid": "sa",
+    "pwd": "ecs@123",
+    "timeout": 30
+  }
+}

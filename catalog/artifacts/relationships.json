@@ -1,0 +1,288 @@
+{
+  "relationships": [
+    {
+      "from": "dbo.Q_VendorAppealImages",
+      "to": "dbo.Q_VendorAppeal",
+      "via": [
+        {
+          "from": "VendAppealRecId",
+          "to": "RecId"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_VendorAppealDefects",
+      "to": "dbo.Q_VendorAppeal",
+      "via": [
+        {
+          "from": "VendAppealRecId",
+          "to": "RecId"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMINITIATE",
+      "to": "dbo.ECS_CLAIMINITIATETYPE",
+      "via": [
+        {
+          "from": "TYPE",
+          "to": "TYPE"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMITEM",
+      "to": "dbo.ECS_CLAIMVENDOR",
+      "via": [
+        {
+          "from": "DATAAREAID",
+          "to": "DATAAREAID"
+        },
+        {
+          "from": "PRIMARYVENDORID",
+          "to": "PRIMARYVENDORID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMITEMDIMENSION",
+      "to": "dbo.ECS_CLAIMITEM",
+      "via": [
+        {
+          "from": "DATAAREAID",
+          "to": "DATAAREAID"
+        },
+        {
+          "from": "ITEMID",
+          "to": "ITEMID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_User",
+      "to": "dbo.Q_Company",
+      "via": [
+        {
+          "from": "CompanyId",
+          "to": "CompanyId"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_Parts",
+      "to": "dbo.Q_Company",
+      "via": [
+        {
+          "from": "CompanyId",
+          "to": "CompanyId"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_MCRF",
+      "to": "dbo.Q_Parts",
+      "via": [
+        {
+          "from": "CompanyId",
+          "to": "CompanyId"
+        },
+        {
+          "from": "Parts",
+          "to": "Parts"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_MCRF",
+      "to": "dbo.Q_Material",
+      "via": [
+        {
+          "from": "CompanyId",
+          "to": "CompanyId"
+        },
+        {
+          "from": "Material",
+          "to": "Material"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_PageAccessUser",
+      "to": "dbo.Q_User",
+      "via": [
+        {
+          "from": "UserId",
+          "to": "UserId"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMITEM",
+      "to": "dbo.ECS_CLAIMDATAAREAID",
+      "via": [
+        {
+          "from": "DATAAREAID",
+          "to": "DATAAREAID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLE",
+      "to": "dbo.ECS_CLAIMDATAAREAID",
+      "via": [
+        {
+          "from": "DATAAREAID",
+          "to": "DATAAREAID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMSTATUS",
+      "to": "dbo.ECS_CLAIMSTATUS",
+      "via": [
+        {
+          "from": "STATUS",
+          "to": "STATUS"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLE",
+      "to": "dbo.ECS_CLAIMSTATUS",
+      "via": [
+        {
+          "from": "STATUS",
+          "to": "STATUS"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLEHISTORY",
+      "to": "dbo.ECS_CLAIMSTATUS",
+      "via": [
+        {
+          "from": "STATUS",
+          "to": "STATUS"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLE",
+      "to": "dbo.ECS_CLAIMSTORE",
+      "via": [
+        {
+          "from": "DATAAREAID",
+          "to": "DATAAREAID"
+        },
+        {
+          "from": "STOREID",
+          "to": "STOREID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLEHISTORY",
+      "to": "dbo.ECS_CLAIMTABLE",
+      "via": [
+        {
+          "from": "CLAIMID",
+          "to": "CLAIMID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTRANSDEFECT",
+      "to": "dbo.ECS_CLAIMTABLE",
+      "via": [
+        {
+          "from": "CLAIMID",
+          "to": "CLAIMID"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMPAGEACCESS",
+      "to": "dbo.ECS_CLAIMUSER",
+      "via": [
+        {
+          "from": "USERNAME",
+          "to": "USERNAME"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMTABLE",
+      "to": "dbo.ECS_CLAIMUSER",
+      "via": [
+        {
+          "from": "CREATEDBY",
+          "to": "USERNAME"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMDEFECT",
+      "to": "dbo.ECS_CLAIMDEFECTTYPE",
+      "via": [
+        {
+          "from": "Type",
+          "to": "Type"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_PageAccessUser",
+      "to": "dbo.Q_Page",
+      "via": [
+        {
+          "from": "Type",
+          "to": "Type"
+        },
+        {
+          "from": "PageName",
+          "to": "PageName"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMREPAIRTARGET",
+      "to": "dbo.ECS_CLAIMREPAIRTYPE",
+      "via": [
+        {
+          "from": "TYPE",
+          "to": "TYPE"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_Defects",
+      "to": "dbo.Q_Classification",
+      "via": [
+        {
+          "from": "Classification",
+          "to": "Classification"
+        }
+      ]
+    },
+    {
+      "from": "dbo.Q_Classification",
+      "to": "dbo.Q_Classification",
+      "via": [
+        {
+          "from": "Classification",
+          "to": "Classification"
+        }
+      ]
+    },
+    {
+      "from": "dbo.ECS_CLAIMREPAIRTARGET",
+      "to": "dbo.ECS_CLAIMREPAIRMAN",
+      "via": [
+        {
+          "from": "EMPID",
+          "to": "EMPID"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,870 @@
+{
+  "tables": [
+    {
+      "name": "dbo.ECS_CLAIMCLEARANCEOFFER",
+      "schema": "dbo",
+      "row_count": 0,
+      "description": "",
+      "primary_key": [
+        "OFFERID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMCLEARANCEOFFER",
+          "type": "CLUSTERED",
+          "column": "OFFERID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMCUSTMSGLOG",
+      "schema": "dbo",
+      "row_count": 65790,
+      "description": "",
+      "primary_key": [
+        "CLAIMID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMCUSTMSGLOG",
+          "type": "CLUSTERED",
+          "column": "CLAIMID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMDATAAREAID",
+      "schema": "dbo",
+      "row_count": 3,
+      "description": "",
+      "primary_key": [
+        "DATAAREAID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMDATAAREAID",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMDEFECT",
+      "schema": "dbo",
+      "row_count": 587,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMDEFECT",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMDEFECTTYPE",
+      "schema": "dbo",
+      "row_count": 6,
+      "description": "",
+      "primary_key": [
+        "Type"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMDEFECTTYPE",
+          "type": "CLUSTERED",
+          "column": "Type"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMIMAGES",
+      "schema": "dbo",
+      "row_count": 212,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMIMAGES",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMINITIATE",
+      "schema": "dbo",
+      "row_count": 22983,
+      "description": "",
+      "primary_key": [
+        "CLAIMID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMINITIATE",
+          "type": "CLUSTERED",
+          "column": "CLAIMID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMINITIATETYPE",
+      "schema": "dbo",
+      "row_count": 6,
+      "description": "",
+      "primary_key": [
+        "TYPE"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMINITIATETYPE",
+          "type": "CLUSTERED",
+          "column": "TYPE"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMINVENTTABLE",
+      "schema": "dbo",
+      "row_count": 39271,
+      "description": "",
+      "primary_key": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "dbo.ECS_CLAIMITEM",
+      "schema": "dbo",
+      "row_count": 26480,
+      "description": "",
+      "primary_key": [
+        "DATAAREAID",
+        "ITEMID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMITEM",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEM",
+          "type": "CLUSTERED",
+          "column": "ITEMID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMITEMDIMENSION",
+      "schema": "dbo",
+      "row_count": 209545,
+      "description": "",
+      "primary_key": [
+        "DATAAREAID",
+        "ITEMID",
+        "COLORID",
+        "COLORNAME",
+        "SIZE",
+        "BARCODE"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "ITEMID"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "COLORID"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "COLORNAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "SIZE"
+        },
+        {
+          "name": "PK_ECS_CLAIMITEMDIMENSION_1",
+          "type": "CLUSTERED",
+          "column": "BARCODE"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMLASTRECEIVEDQTY",
+      "schema": "dbo",
+      "row_count": 43503,
+      "description": "",
+      "primary_key": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "dbo.ECS_CLAIMMESSAGESETTING",
+      "schema": "dbo",
+      "row_count": 1,
+      "description": "",
+      "primary_key": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "dbo.ECS_CLAIMPAGE",
+      "schema": "dbo",
+      "row_count": 27,
+      "description": "",
+      "primary_key": [
+        "PAGENAME",
+        "TYPE"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMPAGE",
+          "type": "CLUSTERED",
+          "column": "PAGENAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMPAGE",
+          "type": "CLUSTERED",
+          "column": "TYPE"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMPAGEACCESS",
+      "schema": "dbo",
+      "row_count": 179,
+      "description": "",
+      "primary_key": [
+        "USERNAME",
+        "PAGENAME"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMPAGEACCESS",
+          "type": "CLUSTERED",
+          "column": "USERNAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMPAGEACCESS",
+          "type": "CLUSTERED",
+          "column": "PAGENAME"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMPERCENTAGE",
+      "schema": "dbo",
+      "row_count": 0,
+      "description": "",
+      "primary_key": [
+        "NAME",
+        "CLAIMPERCENTAGE"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMPERCENTAGE",
+          "type": "CLUSTERED",
+          "column": "NAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMPERCENTAGE",
+          "type": "CLUSTERED",
+          "column": "CLAIMPERCENTAGE"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMREPAIRMAN",
+      "schema": "dbo",
+      "row_count": 5,
+      "description": "",
+      "primary_key": [
+        "EMPID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMREPAIRMAN",
+          "type": "CLUSTERED",
+          "column": "EMPID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMREPAIRTARGET",
+      "schema": "dbo",
+      "row_count": 1069,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMREPAIRTARGET",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMREPAIRTYPE",
+      "schema": "dbo",
+      "row_count": 4,
+      "description": "",
+      "primary_key": [
+        "TYPE"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMREPAIRTYPE",
+          "type": "CLUSTERED",
+          "column": "TYPE"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMSALEINFO",
+      "schema": "dbo",
+      "row_count": 10727018,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMSALEINFO1",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMSALEINFO_DISCOUNT",
+      "schema": "dbo",
+      "row_count": 1897307,
+      "description": "",
+      "primary_key": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "dbo.ECS_CLAIMSTATUS",
+      "schema": "dbo",
+      "row_count": 13,
+      "description": "",
+      "primary_key": [
+        "STATUS"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMSTATUS",
+          "type": "CLUSTERED",
+          "column": "STATUS"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMSTORE",
+      "schema": "dbo",
+      "row_count": 95,
+      "description": "",
+      "primary_key": [
+        "DATAAREAID",
+        "STOREID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMSTORE",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        },
+        {
+          "name": "PK_ECS_CLAIMSTORE",
+          "type": "CLUSTERED",
+          "column": "STOREID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMSTOREACCESS",
+      "schema": "dbo",
+      "row_count": 0,
+      "description": "",
+      "primary_key": [
+        "USERNAME",
+        "STOREID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMSTOREACCESS",
+          "type": "CLUSTERED",
+          "column": "USERNAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMSTOREACCESS",
+          "type": "CLUSTERED",
+          "column": "STOREID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMTABLE",
+      "schema": "dbo",
+      "row_count": 131580,
+      "description": "",
+      "primary_key": [
+        "CLAIMID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "IX_ECS_CLAIMTABLE_ITEMID",
+          "type": "NONCLUSTERED",
+          "column": "ITEMID"
+        },
+        {
+          "name": "PK_ECS_CLAIMTABLE",
+          "type": "CLUSTERED",
+          "column": "CLAIMID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMTABLEHISTORY",
+      "schema": "dbo",
+      "row_count": 517263,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMTABLEHISTORY",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMTRANSDEFECT",
+      "schema": "dbo",
+      "row_count": 73068,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMTRANSDEFECT",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMTTYPE",
+      "schema": "dbo",
+      "row_count": 13,
+      "description": "",
+      "primary_key": [],
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "dbo.ECS_CLAIMUSER",
+      "schema": "dbo",
+      "row_count": 112,
+      "description": "",
+      "primary_key": [
+        "USERNAME"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMUSER_1",
+          "type": "CLUSTERED",
+          "column": "USERNAME"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMUSERCOMPANY",
+      "schema": "dbo",
+      "row_count": 34,
+      "description": "",
+      "primary_key": [
+        "USERNAME",
+        "DATAAREAID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMUSERCOMPANY",
+          "type": "CLUSTERED",
+          "column": "USERNAME"
+        },
+        {
+          "name": "PK_ECS_CLAIMUSERCOMPANY",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.ECS_CLAIMVENDOR",
+      "schema": "dbo",
+      "row_count": 5229,
+      "description": "",
+      "primary_key": [
+        "DATAAREAID",
+        "PRIMARYVENDORID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_ECS_CLAIMVENDOR",
+          "type": "CLUSTERED",
+          "column": "DATAAREAID"
+        },
+        {
+          "name": "PK_ECS_CLAIMVENDOR",
+          "type": "CLUSTERED",
+          "column": "PRIMARYVENDORID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Classification",
+      "schema": "dbo",
+      "row_count": 7,
+      "description": "",
+      "primary_key": [
+        "Classification"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Classification",
+          "type": "CLUSTERED",
+          "column": "Classification"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Company",
+      "schema": "dbo",
+      "row_count": 1,
+      "description": "",
+      "primary_key": [
+        "CompanyId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Company",
+          "type": "CLUSTERED",
+          "column": "CompanyId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Defects",
+      "schema": "dbo",
+      "row_count": 1,
+      "description": "",
+      "primary_key": [
+        "Classification",
+        "Defects"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Defects_1",
+          "type": "CLUSTERED",
+          "column": "Classification"
+        },
+        {
+          "name": "PK_Q_Defects_1",
+          "type": "CLUSTERED",
+          "column": "Defects"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_DefectsImages",
+      "schema": "dbo",
+      "row_count": 1,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_DefectsImages",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Material",
+      "schema": "dbo",
+      "row_count": 111,
+      "description": "",
+      "primary_key": [
+        "CompanyId",
+        "Material"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Material",
+          "type": "CLUSTERED",
+          "column": "CompanyId"
+        },
+        {
+          "name": "PK_Q_Material",
+          "type": "CLUSTERED",
+          "column": "Material"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_MCRF",
+      "schema": "dbo",
+      "row_count": 24,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_MCRF",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Page",
+      "schema": "dbo",
+      "row_count": 16,
+      "description": "",
+      "primary_key": [
+        "Type",
+        "PageName"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Page",
+          "type": "CLUSTERED",
+          "column": "Type"
+        },
+        {
+          "name": "PK_Q_Page",
+          "type": "CLUSTERED",
+          "column": "PageName"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_PageAccessUser",
+      "schema": "dbo",
+      "row_count": 73,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_PageAccessUser",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_Parts",
+      "schema": "dbo",
+      "row_count": 4,
+      "description": "",
+      "primary_key": [
+        "CompanyId",
+        "Parts"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_Parts",
+          "type": "CLUSTERED",
+          "column": "CompanyId"
+        },
+        {
+          "name": "PK_Q_Parts",
+          "type": "CLUSTERED",
+          "column": "Parts"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_PURCHTABLE",
+      "schema": "dbo",
+      "row_count": 201790,
+      "description": "",
+      "primary_key": [
+        "RECID"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_PURCHTABLE",
+          "type": "CLUSTERED",
+          "column": "RECID"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_User",
+      "schema": "dbo",
+      "row_count": 9,
+      "description": "",
+      "primary_key": [
+        "UserId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_User",
+          "type": "CLUSTERED",
+          "column": "UserId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_VADEFECTS",
+      "schema": "dbo",
+      "row_count": 52,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_VADEFECTS",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_VendorAppeal",
+      "schema": "dbo",
+      "row_count": 7,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_VendorAppeal",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_VendorAppealDefects",
+      "schema": "dbo",
+      "row_count": 7,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_VendorAppealDefects",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.Q_VendorAppealImages",
+      "schema": "dbo",
+      "row_count": 11,
+      "description": "",
+      "primary_key": [
+        "RecId"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_Q_VendorAppealImages",
+          "type": "CLUSTERED",
+          "column": "RecId"
+        }
+      ]
+    },
+    {
+      "name": "dbo.TAX_YEAR",
+      "schema": "dbo",
+      "row_count": 5,
+      "description": "",
+      "primary_key": [
+        "TAXYEAR"
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "PK_TAX_YEAR",
+          "type": "CLUSTERED",
+          "column": "TAXYEAR"
+        }
+      ]
+    }
+  ]
+}

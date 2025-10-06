@@ -1,0 +1,20 @@
+
+flask
+flask-cors
+jinja2
+pyodbc
+faiss-cpu
+numpy
+scikit-learn
+rapidfuzz
+click
+pydantic
+uvicorn
+gunicorn
+# For local LLMs (keeping optional; you can comment/uncomment per environment)
+llama-cpp-python
+# Optional GPU path via transformers (comment in if you have GPU & model weights)
+transformers
+torch
+accelerate
+pandas
