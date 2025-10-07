@@ -279,3 +279,16 @@ def ask_stream():
             yield _sse({"type": "error", "data": {"message": str(ex)}})
 
     return Response(generate(), mimetype="text/event-stream")
+# safe wrapper so UI never crashes if ModelRunner lacks generate_sql
+def _generate_sql_safe(prompt: str) -> str:
+    gen = getattr(_model, "generate_sql", None)
+    if callable(gen):
+        return gen(prompt)
+    # last-resort stub
+    import re
+    m_table = re.search(r"- ([A-Za-z0-9_]+\.[A-Za-z0-9_]+)", prompt)
+    m_col = re.search(r"\.([A-Za-z0-9_]+) \(", prompt)
+    table = m_table.group(1) if m_table else "sys.objects"
+    col = m_col.group(1) if m_col else "name"
+    return f"SELECT TOP 50 {col} FROM {table};"
+
