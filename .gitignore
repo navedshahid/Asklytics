@@ -1,0 +1,12 @@
+# Ignore virtual environment folders
+venv/
+.env/
+ENV/
+
+# Ignore model and big data folders
+model/
+models/
+data/
+datasets/
+checkpoints/
+outputs/

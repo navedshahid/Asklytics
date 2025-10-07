@@ -7,11 +7,18 @@
 {%- endfor %}
 
 ## Rules (STRICT)
-- You MUST use only the tables and columns listed above.
-- If the question needs a column that is not listed, reply with: `CANNOT_ANSWER_MISSING_COLUMN`.
-- Use schema-qualified names (schema.table).
-- One SELECT statement only. No DDL, DML, EXEC, or temp tables.
-- Prefer TOP 50 unless the user requests aggregates only.
+- Use only the tables/columns listed above.
+- Schema-qualify tables (schema.table).
+- One SELECT statement. No DDL/DML/EXEC/temp tables.
+- Prefer TOP 50 for previews.
+
+## Rules (STRICT)
+- Return ONE T-SQL SELECT statement only.
+- Do NOT wrap the SQL in quotes or code fences.
+- Use only the allowed tables/columns listed above.
+- Schema-qualify tables (schema.table).
 
 ## Output
 Return only the SQL text.
+
+

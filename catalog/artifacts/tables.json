@@ -20,7 +20,7 @@
     {
       "name": "dbo.ECS_CLAIMCUSTMSGLOG",
       "schema": "dbo",
-      "row_count": 65790,
+      "row_count": 65792,
       "description": "",
       "primary_key": [
         "CLAIMID"
@@ -445,7 +445,7 @@
     {
       "name": "dbo.ECS_CLAIMTABLE",
       "schema": "dbo",
-      "row_count": 131580,
+      "row_count": 131584,
       "description": "",
       "primary_key": [
         "CLAIMID"
@@ -467,7 +467,7 @@
     {
       "name": "dbo.ECS_CLAIMTABLEHISTORY",
       "schema": "dbo",
-      "row_count": 517263,
+      "row_count": 517270,
       "description": "",
       "primary_key": [
         "RECID"
@@ -484,7 +484,7 @@
     {
       "name": "dbo.ECS_CLAIMTRANSDEFECT",
       "schema": "dbo",
-      "row_count": 73068,
+      "row_count": 73071,
       "description": "",
       "primary_key": [
         "RECID"

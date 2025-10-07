@@ -1,41 +1,41 @@
 # compat/_bridge.py
 from __future__ import annotations
-import os, json, time
-from typing import Dict, Any, List, Set
-from flask import Blueprint, request, jsonify, Response
-import pyodbc
 
-# QueryPilot internals
+import os, json, time, re
+from typing import Dict, Any, List, Set
+
+import pyodbc
+from flask import Blueprint, request, jsonify, Response
+
+# Internal modules
 from catalog.loader import CatalogLoader
 from retrieval.selector import HybridSelector
 from prompting.generator import PromptGenerator
 from safety.sql_validator import SQLValidator, ValidationError as SQLValidationError
-from execution.tsql import SafeTSQLExecutor  # current MVP supports T-SQL
+from execution.tsql import SafeTSQLExecutor
 from utils.audit import AuditLogger
 from utils.models import ModelRunner, ModelProfiles
 from safety.schema_guard import validate_or_patch_sql
 
-# (Removed invalid top-level code that used yield and _sse outside a function)
-
-
+# ---------------- Blueprint (THIS is what app.py imports) ----------------
 bp = Blueprint("asklytics", __name__, url_prefix="/api")
 
-# --- persistence
+# ---------------- persistence ----------------
 CONFIG_DIR = os.environ.get("GENDS_CONFIG_DIR", "./data")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "asklytics_config.json")
 TABLE_FILTER_PATH = os.path.join(CONFIG_DIR, "table_filter.json")
 os.makedirs(CONFIG_DIR, exist_ok=True)
 
-# --- singletons
+# ---------------- singletons ----------------
 _catalog = CatalogLoader(base_dir="./catalog/artifacts")
 _selector = HybridSelector(base_dir="./catalog/artifacts")
-_prompt = PromptGenerator(template_dir="./prompting/templates")
+_prompt   = PromptGenerator(template_dir="./prompting/templates")
 _validator = SQLValidator()
-_executor = SafeTSQLExecutor(audit_path="./storage/audit.sqlite")
-_audit = AuditLogger(db_path="./storage/audit.sqlite")
-_model = ModelRunner(profile=ModelProfiles.BALANCED)
+_executor  = SafeTSQLExecutor(audit_path="./storage/audit.sqlite")
+_audit     = AuditLogger(db_path="./storage/audit.sqlite")
+_model     = ModelRunner(profile=ModelProfiles.BALANCED)
 
-# ---------- helpers
+# ---------------- helpers ----------------
 def _load_cfg() -> Dict[str, Any]:
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -93,7 +93,6 @@ def _dsn_from(db: Dict[str, Any]) -> str:
     return base + f"UID={uid};PWD={pwd};"
 
 def _current_dialect() -> str:
-    # store in config; default tsql
     return (_load_cfg().get("dialect") or "tsql").lower()
 
 def _set_dialect(dialect: str) -> None:
@@ -101,11 +100,11 @@ def _set_dialect(dialect: str) -> None:
     cfg["dialect"] = dialect.lower()
     _save_cfg(cfg)
 
-# apply DSN at import so executor works pre-UI
+# hot-apply DSN if DB already saved
 if _load_db():
     os.environ["QP_SQL_DSN"] = _dsn_from(_load_db())
 
-# ---------- status & info
+# ---------------- status & info ----------------
 @bp.get("/status")
 def status():
     faiss_ok = os.path.exists("./catalog/artifacts/columns.faiss")
@@ -121,11 +120,11 @@ def db_info():
     db = _load_db()
     if not db:
         return jsonify({"database": None, "server": None, "dialect": _current_dialect()}), 200
-    safe = {k:v for k,v in db.items() if k != "pwd"}
+    safe = {k: v for k, v in db.items() if k != "pwd"}
     safe["dialect"] = _current_dialect()
     return jsonify(safe), 200
 
-# ---------- settings: save & test
+# ---------------- settings: save & test ----------------
 @bp.post("/settings/db/test")
 def settings_test():
     details = request.get_json(force=True) or {}
@@ -143,46 +142,14 @@ def settings_save():
     db = payload.get("db") or {}
     dialect = (payload.get("dialect") or "tsql").lower()
     if not db.get("server") or not db.get("database"):
-        return jsonify({"status":"error","message":"Server and Database are required"}), 400
+        return jsonify({"status": "error", "message": "Server and Database are required"}), 400
     _save_db(db)
     _set_dialect(dialect)
-    os.environ["QP_SQL_DSN"] = _dsn_from(db)   # hot apply for executor
-    return jsonify({"status":"success","message":"Configuration saved", "dialect": dialect})
+    os.environ["QP_SQL_DSN"] = _dsn_from(db)  # hot apply
+    return jsonify({"status": "success", "message": "Configuration saved", "dialect": dialect})
 
-# ---------- load tables immediately after saving DB (pre-embedding)
-@bp.get("/db/tables")
-def db_tables():
-    db = _load_db()
-    if not db:
-        return jsonify({"status":"error","message":"Configure DB first"}), 400
-    dsn = _dsn_from(db)
-    try:
-        with pyodbc.connect(dsn, timeout=10) as cn:
-            rows = cn.cursor().execute("""
-                SELECT s.name AS schema_name, t.name AS table_name
-                FROM sys.tables t
-                JOIN sys.schemas s ON s.schema_id = t.schema_id
-                ORDER BY s.name, t.name
-            """).fetchall()
-        tables = [f"{r[0]}.{r[1]}" for r in rows]
-        sel = _load_tables_sel() or set()
-        out = [{"name": t, "selected": t in sel} for t in tables]
-        return jsonify({"status":"success","tables": out})
-    except Exception as e:
-        return jsonify({"status":"error","message": str(e)}), 500
-
-@bp.post("/catalog/tables/save")
-def catalog_tables_save():
-    payload = request.get_json(force=True) or {}
-    selected = payload.get("tables") or []
-    # sanity against live DB list
-    legit = {t["name"] for t in (_db_tables_internal() or [])}
-    clean = [t for t in selected if t in legit] if legit else selected
-    _save_tables_sel(clean)
-    return jsonify({"status":"success","count": len(clean)})
-
+# ---------------- table list & selection ----------------
 def _db_tables_internal():
-    # for validation; returns list[{"name": "..."}]
     try:
         db = _load_db()
         if not db: return []
@@ -198,29 +165,59 @@ def _db_tables_internal():
     except Exception:
         return []
 
-# ---------- Build embeddings (filtered by selected tables)
+@bp.get("/db/tables")
+def db_tables():
+    db = _load_db()
+    if not db:
+        return jsonify({"status": "error", "message": "Configure DB first"}), 400
+    try:
+        tables = _db_tables_internal()
+        sel = _load_tables_sel() or set()
+        out = [{"name": t["name"], "selected": t["name"] in sel} for t in tables]
+        return jsonify({"status": "success", "tables": out})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@bp.post("/catalog/tables/save")
+def catalog_tables_save():
+    payload = request.get_json(force=True) or {}
+    selected = payload.get("tables") or []
+    legit = {t["name"] for t in (_db_tables_internal() or [])}
+    clean = [t for t in selected if t in legit] if legit else selected
+    _save_tables_sel(clean)
+    return jsonify({"status": "success", "count": len(clean)})
+
+# ---------------- build & reload ----------------
 @bp.post("/training/run")
 def training_run():
     from catalog.refresh_catalog_tsql import refresh_catalog
     db = _load_db()
     if not db:
-        return jsonify({"status":"error","message":"Configure DB first"}), 400
+        return jsonify({"status": "error", "message": "Configure DB first"}), 400
     dsn = _dsn_from(db)
     allow = _load_tables_sel()
     try:
         info = refresh_catalog(dsn=dsn, schemas=None, out_dir="./catalog/artifacts", allowed_tables=allow)
-        return jsonify({"status":"success","info": info})
+        return jsonify({"status": "success", "info": info})
     except Exception as e:
-        return jsonify({"status":"error","message": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @bp.post("/faiss/reload")
 def faiss_reload():
     global _catalog, _selector
     _catalog = CatalogLoader(base_dir="./catalog/artifacts")
     _selector = HybridSelector(base_dir="./catalog/artifacts")
-    return jsonify({"status":"success","message":"Knowledge base reloaded"})
+    return jsonify({"status": "success", "message": "Knowledge base reloaded"})
 
-# ---------- SSE Ask (uses allowlist at retrieval time too)
+@bp.get("/model/info")
+def model_info():
+    return jsonify({
+        "path": os.environ.get("QP_MODEL_PATH"),
+        "ctx": os.environ.get("QP_MODEL_CTX"),
+        "gpu_layers": os.environ.get("QP_MODEL_NGPU"),
+    })
+
+# ---------------- SSE ask/stream ----------------
 def _sse(obj: Dict[str, Any]) -> str:
     return "data: " + json.dumps(obj) + "\n\n"
 
@@ -230,7 +227,7 @@ def ask_stream():
     q = (payload.get("question") or "").strip()
     user_id = payload.get("user_id") or "anonymous"
     if not q:
-        return jsonify({"error":"question is required"}), 400
+        return jsonify({"error": "question is required"}), 400
 
     def generate():
         try:
@@ -238,30 +235,47 @@ def ask_stream():
             retr = _selector.select(q, k_tables=6, k_columns=24, allow_tables=allow)
             prompt = _prompt.render_tsql(question=q, retrieval=retr, policies=_validator.policies_block())
         except Exception as ex:
-            yield _sse({"type":"error","data":{"message": f"Template/retrieval error: {ex}"}})
+            yield _sse({"type": "error", "data": {"message": f"Template/retrieval error: {ex}"}})
             return
 
-        # fake token stream
-        for cut in (len(prompt)//3 or 1, 2*len(prompt)//3 or 1, len(prompt)):
-            yield _sse({"type":"token","data":{"value": prompt[:cut]}})
+        # (Optional) send a little fake token stream to keep UI lively
+        cut1 = max(1, len(prompt)//3); cut2 = max(2, 2*len(prompt)//3)
+        for cut in (cut1, cut2, len(prompt)):
+            yield _sse({"type": "token", "data": {"value": prompt[:cut]}})
             time.sleep(0.02)
 
-        sql = _model.generate_sql(prompt)
+        # LLM
+        sql = _model.generate_sql(prompt)  # <-- requires generate_sql to exist
         try:
+            # Schema guard first (ensures only allowed tables/cols)
+            ok, sql2, reasons = validate_or_patch_sql(sql, retr)
+            if not ok:
+                yield _sse({"type":"error","data":{"message":"Schema guard blocked SQL","reasons":reasons,"sql":sql}})
+                return
+            sql = sql2
+            # Safety validator (TOP/ROWCOUNT, etc.)
             _validator.assert_safe(sql)
         except SQLValidationError:
             sql = _validator.patch_sql(sql)
+
         yield _sse({"type":"sql_complete","data":{"query": sql}})
 
-        # execute
+        # reject quoted-sql mistakes
+        if re.match(r"^\s*select\s+N?'.*'\s*;?\s*$", sql, flags=re.I | re.S):
+            yield _sse({"type": "error", "data": {"message": "Model returned quoted SQL text."}})
+            return
+
+        # Execute
         try:
             dsn = _dsn_from(_load_db())
             df, meta = _executor.execute(sql, dsn_override=dsn)
             _audit.log(user_id, q, sql, success=True, rows=meta.get("rowcount", 0))
-            yield _sse({"type":"result","data":{"columns": list(df.columns), "data": df.to_dict(orient="records"), "meta": meta}})
+            yield _sse({"type": "result",
+                        "data": {"columns": list(df.columns),
+                                 "data": df.to_dict(orient="records"),
+                                 "meta": meta}})
         except Exception as ex:
             _audit.log(user_id, q, sql, success=False, reasons=[str(ex)])
-            yield _sse({"type":"error","data":{"message": str(ex)}})
+            yield _sse({"type": "error", "data": {"message": str(ex)}})
 
-    import time
     return Response(generate(), mimetype="text/event-stream")
