@@ -1,0 +1,180 @@
+                n_gpu_layers=llm_conf["n_gpu_layers"],
+                n_batch=512,
+                verbose=False
+            )
+            logger.info("llama.cpp: GPU offload %s", "ENABLED" if llm_conf["n_gpu_layers"] > 0 else "DISABLED")
+            logger.info("Local LLM loaded successfully.")
+        else:
+            logger.error("LLM model not found at %s", llm_conf["model_path"])
+    except Exception as e:
+        logger.critical("Failed to init LLM: %s", e, exc_info=True)
+
+
+def load_faiss_index_and_strings(reload: bool = False) -> bool:
+    global faiss_index, knowledge_strings
+    if faiss_index is not None and not reload: return True
+    faiss_cfg = config.get("faiss"); idx_path, str_path = faiss_cfg["index_path"], faiss_cfg["strings_path"]
+    if os.path.exists(idx_path) and os.path.exists(str_path):
+        try:
+            faiss_index = faiss.read_index(idx_path); knowledge_strings = np.load(str_path, allow_pickle=True)
+            logger.info(f"FAISS loaded with {faiss_index.ntotal} items"); return True
+        except Exception as e:
+            logger.error(f"FAISS load error: {e}", exc_info=True); faiss_index, knowledge_strings = None, None; return False
+    logger.warning("FAISS files not found; build from /settings"); return False
+
+# ... (Routes and API Endpoints are mostly unchanged, but will now be more reliable) ...
+@app.route("/")
+def home():
+    if not config.is_db_configured() or not load_faiss_index_and_strings(): return redirect(url_for("settings"))
+    return render_template("index.html")
+@app.route("/settings")
+def settings(): return render_template("settings.html")
+
+@app.route("/api/status", methods=["GET"])
+def status():
+    cu = _cuda_diag()
+    return jsonify({
+        "database_configured": config.is_db_configured(),
+        "faiss_index_loaded": bool(faiss_index and faiss_index.ntotal > 0),
+        "llm_loaded": llm is not None,
+        "connection_pool_active": connection_pool is not None,
+        "torch": {"version": cu["torch_version"], "cuda_available": cu["cuda_available"], "cuda_version": cu["cuda_version"], "gpu_name": cu["gpu_name"]},
+        "embedder_device": str(getattr(embedder, "_target_device", None)) if embedder else None,
+    })
+
+
+@app.route("/api/db_info", methods=["GET"])
+def db_info():
+    if config.is_db_configured(): db = config.get("db"); return jsonify({"server": db.get("server"), "database": db.get("database")})
+    return jsonify({"server": "N/A", "database": "Not Configured"})
+@app.route("/api/settings/db/current", methods=["GET"])
+def get_current_db_config():
+    db = config.get("db").copy(); db.pop("pwd", None); return jsonify(db), 200
+@app.route("/api/settings/db/test", methods=["POST"])
+def test_db_connection():
+    details = request.get_json(force=True) or {};
+    try: conn_str = f"DRIVER={{{details['driver']}}};SERVER={details['server']};DATABASE={details['database']};UID={details['uid']};PWD={details['pwd']};TrustServerCertificate=yes;"; pyodbc.connect(conn_str, timeout=int(details.get("timeout", 5))).close(); return jsonify({"status": "success", "message": "Connection test successful!"})
+    except Exception as e: return jsonify({"status": "error", "message": f"Connection test failed: {e}"})
+@app.route("/api/settings/db/save", methods=["POST"])
+def save_db_connection():
+    details = request.get_json(force=True) or {}; required = ["server", "database", "uid", "pwd"]; missing = [k for k in required if not details.get(k)]
+    if missing: return jsonify({"status": "error", "message": f"Missing fields: {', '.join(missing)}"}), 400
+    config.update_db_config(details)
+    def _init_pool_async():
+        global connection_pool
+        try: connection_pool = ConnectionPool(size=5); logger.info("DB pool initialized (async)")
+        except Exception as e: logger.error(f"Pool init failed: {e}", exc_info=True)
+    Thread(target=_init_pool_async, daemon=True).start(); return jsonify({"status": "success", "message": f"Configuration saved. Pool starting…"}), 200
+# training
+@app.route("/api/training/run", methods=["POST"])
+def run_training():
+    def _run_build_task():
+        logger.info("Starting schema indexing task …")
+        if not (config.is_db_configured() and embedder): logger.error("Cannot build index: DB not configured or embedder not loaded"); return
+        try:
+            with get_db_connection() as conn:
+                q = "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION;"
+                rows = conn.cursor().execute(q).fetchall(); tables = {}
+                for r in rows:
+                    key = f"[{r.TABLE_SCHEMA}].[{r.TABLE_NAME}]"; col = f"[{r.COLUMN_NAME}] {r.DATA_TYPE}"
+                    if getattr(r, "CHARACTER_MAXIMUM_LENGTH", None) is not None: col += f"({r.CHARACTER_MAXIMUM_LENGTH})"
+                    tables.setdefault(key, []).append(col)
+                schema_chunks = [f"Table {t} has columns: {', '.join(cols)}." for t, cols in tables.items()]
+            if not schema_chunks: logger.warning("No tables discovered; aborting index build"); return
+            logger.info(f"Embedding {len(schema_chunks)} tables …")
+    
+    # Log device during training/embedding
+            try:
+                logger.info("Embedding on device: %s", getattr(embedder, "_target_device", "unknown"))
+            except Exception:
+                pass
+            # BGE-M3 returns a dictionary; we only need the dense vectors
+            logger.info("Encoding %s tables using FlagEmbedding (BGE-M3)...", len(schema_chunks))
+            emb_out = embedder.encode(schema_chunks, batch_size=16)
+            embs = np.array(emb_out["dense_vecs"], dtype="float32")
+            embs = embedder.encode(schema_chunks, batch_size=16)['dense_vecs']
+
+            # embs = embedder.encode(schema_chunks, convert_to_numpy=True, show_progress_bar=True); embs = np.asarray(embs, dtype="float32")
+            index = faiss.IndexFlatL2(embs.shape[1]); index.add(embs)
+            faiss_cfg = config.get("faiss"); faiss.write_index(index, faiss_cfg["index_path"]); np.save(faiss_cfg["strings_path"], np.array(schema_chunks, dtype=object))
+            logger.info("Index build complete; reloading in memory"); load_faiss_index_and_strings(reload=True)
+        except Exception as e: logger.error(f"Index build failed: {e}", exc_info=True)
+    Thread(target=_run_build_task, daemon=True).start()
+    return jsonify({"status": "success", "message": "Knowledge build started."}), 202
+
+@app.route("/api/faiss/reload", methods=["POST"])
+def reload_faiss():
+    if load_faiss_index_and_strings(reload=True): return jsonify({"status": "success", "message": f"Reloaded {faiss_index.ntotal} items."})
+    return jsonify({"status": "error", "message": "Reload failed; files missing/corrupt."}), 500
+
+# ... (Streaming functions are unchanged from your last correct version) ...
+def stream_event(event_type: str, data: dict):
+    payload = json.dumps({"type": event_type, "data": data}); return f"data: {payload}\n\n"
+def parse_sql_error(e: pyodbc.Error) -> str:
+    error_message = str(e); match = re.search(r"\[SQL Server\](.*?)(?:\s*\[|\s*$)", error_message)
+    if match: return match.group(1).strip()
+    return "An unspecified SQL error occurred."
+@app.route("/api/ask/stream", methods=["POST"])
+def ask_stream():
+    if not (llm and embedder and faiss_index):
+        def error_stream(): yield stream_event("error", {"message": "System not fully initialized."})
+        return Response(error_stream(), mimetype="text/event-stream")
+    data = request.get_json(force=True) or {}; question = (data.get("question") or "").strip()
+    def generate_response():
+        full_sql = ""
+        try:
+            k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
+            q_emb = np.array(embedder.encode([question])["dense_vecs"], dtype="float32")
+            # q_emb = embedder.encode([question], convert_to_numpy=True).astype("float32")
+            _, I = faiss_index.search(q_emb, k); context = "\n---\n".join(knowledge_strings[i] for i in I[0])
+            prompt = f"""
+            ### Instructions:
+            You are an expert in Microsoft SQL Server (T-SQL). 
+            Generate a single, syntactically correct **SQL Server** SELECT query to answer the user's question.
+            Use only T-SQL syntax (e.g., YEAR(), MONTH(), DATEPART()) — do NOT use PostgreSQL or MySQL functions.
+            Return only the SQL query, without comments, code fences, or explanations.
+
+            ### Schema Context:
+            {context}
+
+            ### User Question:
+            {question}
+
+            ### SQL Server Query:"""
+
+            for chunk in llm(prompt, max_tokens=512, temperature=0.1, stop=["###", "\n\n\n"], stream=True):
+                token = chunk["choices"][0]["text"]; full_sql += token
+                yield stream_event("token", {"value": token})
+            clean_sql = re.search(r"(?is)SELECT\b.*", full_sql).group(0).strip().rstrip(";")
+            yield stream_event("sql_complete", {"query": clean_sql})
+            yield stream_event("executing", {"message": "Executing SQL query..."})
+            with get_db_connection() as conn:
+                cur = conn.cursor(); cur.execute(clean_sql)
+                columns = [d[0] for d in cur.description] if cur.description else []
+                data_rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+            yield stream_event("result", {"columns": columns, "data": data_rows})
+        except pyodbc.Error as e:
+            logger.error(f"Streaming SQL error: {e}"); friendly_error = parse_sql_error(e)
+            yield stream_event("error", {"message": f"SQL Error: {friendly_error}", "full_query": full_sql})
+        except Exception as e:
+            logger.error(f"Streaming general error: {e}", exc_info=True)
+            yield stream_event("error", {"message": str(e), "full_query": full_sql})
+        finally:
+            yield stream_event("done", {"message": "Stream complete."})
+    return Response(generate_response(), mimetype="text/event-stream")
+@app.route("/api/gemini_ask/stream", methods=["POST"])
+def gemini_ask_stream():
+    gemini_config = config.get("gemini")
+    if not gemini_config.get("api_key"):
+        def error_stream(): yield stream_event("error", {"message": "GEMINI_API_KEY is not configured."})
+        return Response(error_stream(), mimetype="text/event-stream")
+    data = request.get_json(force=True) or {}; question = (data.get("question") or "").strip()
+    def generate_response():
+        full_sql_raw, clean_sql = "", ""
+        try:
+            k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
+            q_emb = embedder.encode([question], convert_to_numpy=True).astype("float32")
+            _, I = faiss_index.search(q_emb, k); context = "\n---\n".join(knowledge_strings[i] for i in I[0])
+            prompt = ( "You are an expert Microsoft SQL query generator. Given the following Microsoft SQL Server schema context and a user question, generate a single, syntactically correct SQL Server SELECT query to answer the question. Output ONLY the SQL query itself, with no explanation, markdown, or anything else.\n\n" f"## Schema Context:\n{context}\n\n" f"## User Question:\n{question}\n\n" "## SQL Query:" )
+            api_url = f"{gemini_config['base_url']}/{gemini_config['model']}:streamGenerateContent?key={gemini_config['api_key']}&alt=sse"
+            payload = {"contents": [{"parts": [{"text": prompt}]}]}

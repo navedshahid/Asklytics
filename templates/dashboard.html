@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evaluation Dashboard - AskLytics</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background:#f8fafc; color:#111827; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:.5rem; padding:1rem; }
+    .title { font-weight:600; margin-bottom:.5rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
+  </style>
+</head>
+<body class="p-4">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <a href="/" class="text-sm text-blue-600 hover:underline">&larr; Back to Chat</a>
+        <h1 class="text-2xl font-semibold">Evaluation Dashboard</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="/review" class="px-3 py-2 border rounded">Review Feedback</a>
+        <button id="btn-run-reg" class="px-3 py-2 bg-blue-600 text-white rounded">Run Regression Suite</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+      <div class="card"><div class="title">Experience Growth</div>
+        <div id="kpi-growth" class="text-sm text-gray-700">Loading...</div></div>
+      <div class="card"><div class="title">ROI</div>
+        <div id="kpi-roi" class="text-sm text-gray-700">Loading...</div></div>
+      <div class="card"><div class="title">User-Verified Accuracy (30d)</div>
+        <div id="kpi-verified" class="text-sm text-gray-700">Loading...</div></div>
+      <div class="card">
+        <div class="title">Audit</div>
+        <div class="text-sm text-gray-700">Export last 30 days of LLM interactions.</div>
+        <a class="inline-block mt-2 px-3 py-2 border rounded" href="/api/audit/export">Download CSV</a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div class="card md:col-span-2">
+        <div class="flex items-center justify-between">
+          <div class="title">Accuracy Trend</div>
+          <select id="acc-days" class="border rounded px-2 py-1 text-sm">
+            <option value="7">7d</option>
+            <option value="30" selected>30d</option>
+            <option value="90">90d</option>
+          </select>
+        </div>
+        <canvas id="accuracyChart" height="80"></canvas>
+      </div>
+      <div class="card">
+        <div class="title">Top Recent Queries</div>
+        <div id="top-queries" class="text-sm">Loading...</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+      <div class="card">
+        <div class="title">Error Buckets (30d)</div>
+        <canvas id="errorChart" height="100"></canvas>
+      </div>
+      <div class="card">
+        <div class="title">Weak Joins (30d)</div>
+        <div class="overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead><tr class="text-left border-b"><th class="py-1 px-2">Left</th><th class="py-1 px-2">Right</th><th class="py-1 px-2">Issues</th><th class="py-1 px-2">Fail Rate</th><th class="py-1 px-2">Samples</th></tr></thead>
+            <tbody id="joins-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 mb-6">
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div class="title">Verified Accuracy (Feedback, 30d)</div>
+        </div>
+        <canvas id="feedbackChart" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="fixed inset-0 hidden bg-black bg-opacity-30 items-center justify-center">
+    <div class="bg-white rounded shadow-lg max-w-2xl w-full p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-semibold">Regression Results</div>
+        <button id="btn-close" class="px-2 py-1 border rounded">Close</button>
+      </div>
+      <pre id="reg-out" class="mono text-xs overflow-auto" style="max-height:400px;"></pre>
+    </div>
+  </div>
+
+  <script>
+    const accSel = document.getElementById('acc-days');
+    const kpi = document.getElementById('kpi-growth');
+    const kpiRoi = document.getElementById('kpi-roi');
+    const joinsBody = document.getElementById('joins-body');
+    const topDiv = document.getElementById('top-queries');
+    const modal = document.getElementById('modal');
+    const regOut = document.getElementById('reg-out');
+    document.getElementById('btn-close').onclick = ()=> modal.classList.add('hidden');
+    document.getElementById('btn-run-reg').onclick = async ()=>{
+      regOut.textContent = 'Running...'; modal.classList.remove('hidden');
+      try{
+        const r = await fetch('/api/regression/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ suite:'default' })});
+        const j = await r.json(); regOut.textContent = JSON.stringify(j, null, 2);
+      }catch(e){ regOut.textContent = 'Failed: ' + e.message; }
+    }
+
+    let accuracyChart, errorChart, feedbackChart;
+    function initCharts(){
+      const actx = document.getElementById('accuracyChart').getContext('2d');
+      accuracyChart = new Chart(actx, { type:'line', data:{ labels:[], datasets:[{label:'Accuracy', data:[], borderColor:'#2563eb' }]}, options:{ scales:{ y:{ min:0, max:1 }}} });
+      const ectx = document.getElementById('errorChart').getContext('2d');
+      errorChart = new Chart(ectx, { type:'bar', data:{ labels:['join_error','column_missing','syntax_error','timeout','empty_result','other'], datasets:[{label:'Count', data:[0,0,0,0,0,0], backgroundColor:'#ef4444'}]}} );
+      const fctx = document.getElementById('feedbackChart').getContext('2d');
+      feedbackChart = new Chart(fctx, { type:'line', data:{ labels:[], datasets:[{label:'Verified Accuracy', data:[], borderColor:'#16a34a'}]}, options:{ scales:{ y:{ min:0, max:1 }}} });
+    }
+
+    async function loadRollup(days){
+      const r = await fetch(`/api/learn/metrics/rollup?days=${days}`); const j = await r.json();
+      // Update KPI
+      kpi.innerHTML = `Total: <b>${j.xp_total}</b> · 7d: <b>${j.xp_7d}</b> · 30d: <b>${j.xp_30d}</b> · Avg Latency: <b>${j.avg_latency_ms}ms</b>`;
+      // Simple trend using single point for now
+      accuracyChart.data.labels = ['now'];
+      accuracyChart.data.datasets[0].data = [j.accuracy];
+      accuracyChart.update();
+    }
+
+    async function loadSummary(){
+      try{
+        const r = await fetch('/api/metrics/summary'); const j = await r.json();
+        if(j.error){ kpiRoi.textContent = j.error; return; }
+        const pct = (j.average_accuracy*100).toFixed(1);
+        const corr = (j.average_correction_rate*100).toFixed(1);
+        const savedMin = Math.round((j.time_saved_ms_est||0)/60000);
+        kpiRoi.innerHTML = `Acc: <b>${pct}%</b> · Correction: <b>${corr}%</b> · Time saved: <b>${savedMin} mins</b>`;
+      }catch(e){ kpiRoi.textContent = 'Unavailable'; }
+    }
+
+    async function loadVerifiedKpi(){
+      try{
+        const r = await fetch('/api/feedback/summary?days=30');
+        const j = await r.json();
+        if(j && j.total != null){
+          const pct = ((j.accuracy||0)*100).toFixed(1);
+          const total = j.total||0;
+          document.getElementById('kpi-verified').innerHTML = `Acc: <b>${pct}%</b> • Samples: <b>${total}</b>`;
+        } else {
+          document.getElementById('kpi-verified').textContent = 'Unavailable';
+        }
+      }catch(e){ document.getElementById('kpi-verified').textContent = 'Unavailable'; }
+    }
+
+    async function loadErrors(){
+      const r = await fetch('/api/learn/metrics/errors?days=30'); const j = await r.json();
+      const labels = ['join_error','column_missing','syntax_error','timeout','empty_result','other'];
+      errorChart.data.labels = labels; errorChart.data.datasets[0].data = labels.map(k=> j[k]||0); errorChart.update();
+    }
+
+    async function loadTop(){
+      try{
+        const r = await fetch('/api/learn/metrics/top?days=30&k=10'); const j = await r.json();
+        const rows = (j||[]).map(x=> `<div class="py-1 border-b"><span class="text-gray-700">${(x.query||'').slice(0,120)}</span></div>`).join('');
+        topDiv.innerHTML = rows || 'No data';
+      }catch(e){ topDiv.textContent = 'Unavailable'; }
+    }
+
+    async function loadJoins(){
+      const r = await fetch('/api/learn/metrics/joins?days=30'); const j = await r.json();
+      joinsBody.innerHTML = '';
+      (j||[]).forEach(row=>{
+        const tr = document.createElement('tr'); tr.className='border-b';
+        tr.innerHTML = `<td class='px-2 py-1 mono'>${row.left_table}</td><td class='px-2 py-1 mono'>${row.right_table}</td><td class='px-2 py-1'>${row.issues}</td><td class='px-2 py-1'>${Math.round(row.fail_rate*100)}%</td><td class='px-2 py-1'>${(row.samples||[]).join(', ')}</td>`;
+        joinsBody.appendChild(tr);
+      })
+    }
+
+    async function loadFeedbackTrend(){
+      try{
+        const r = await fetch('/api/roi/feedback_trend?days=30');
+        const j = await r.json();
+        const arr = j.trend || [];
+        const labels = arr.map(x=> x.date);
+        const data = arr.map(x=> x.accuracy||0);
+        feedbackChart.data.labels = labels;
+        feedbackChart.data.datasets[0].data = data;
+        feedbackChart.update();
+      }catch(e){ /* silent */ }
+    }
+
+    initCharts();
+    loadRollup(30);
+    loadSummary();
+    loadVerifiedKpi();
+    loadErrors();
+    loadTop();
+    loadJoins();
+    loadFeedbackTrend();
+    accSel.addEventListener('change', ()=> loadRollup(parseInt(accSel.value,10)));
+  </script>
+</body>
+</html>

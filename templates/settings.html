@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings - Analytica AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            font-size: 0.9375rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .form-input:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            outline: 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-success {
+            background-color: #198754;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #157347;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .btn i {
+            margin-right: 0.5rem;
+        }
+
+        .alert {
+            padding: 0.875rem;
+            margin-bottom: 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.9375rem;
+        }
+
+        .alert-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+
+        .alert-info {
+            background-color: #cff4fc;
+            color: #055160;
+            border: 1px solid #b6effb;
+        }
+
+        .section-divider {
+            margin: 2.5rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        h1,
+        h2 {
+            color: #343a40;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3 text-sm">
+                <a href="/metadata" class="text-blue-600 hover:underline">Meta Data Explorer</a>
+                <span>·</span>
+                <a href="/dashboard" class="text-blue-600 hover:underline">Dashboard</a>
+                <span>·</span>
+                <a href="/" class="text-blue-600 hover:underline">Main Chat Window</a>
+            </div>
+            <h1 class="text-2xl font-semibold">Settings</h1>
+        </div>
+
+        <section id="db-config-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step1">
+                <span>Step 1 — Connect to Database</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step1" class="p-4 space-y-4">
+            <form id="db-config-form" class="space-y-4">
+                <div><label for="db-driver" class="form-label">Driver:</label><input type="text" id="db-driver"
+                        name="driver" class="form-input" value="ODBC Driver 17 for SQL Server"></div>
+                <div> <label for="db-dialect" class="form-label">SQL Dialect:</label>
+                    <select id="db-dialect" name="dialect" class="form-input">
+                        <option value="SQL Server">Microsoft SQL Server (T-SQL)</option>
+                        <option value="PostgreSQL">PostgreSQL (PL/pgSQL)</option>
+                        <option value="MySQL">MySQL</option>
+                    </select>
+                </div>
+                <div><label for="db-server" class="form-label">Server Address:</label><input type="text" id="db-server"
+                        name="server" class="form-input" placeholder="localhost" required></div>
+                <div><label for="db-name" class="form-label">Database Name:</label><input type="text" id="db-name"
+                        name="database" class="form-input" placeholder="AdventureWorks2017" required></div>
+                <div><label for="db-user" class="form-label">Username:</label><input type="text" id="db-user" name="uid"
+                        class="form-input" placeholder="sa" required></div>
+                <div><label for="db-password" class="form-label">Password:</label><input type="password"
+                        id="db-password" name="pwd" class="form-input" placeholder="Enter password"></div>
+                <div><label for="db-timeout" class="form-label">Timeout (s):</label><input type="number" id="db-timeout"
+                        name="timeout" class="form-input" value="30" min="5"></div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" id="test-db-connection" class="btn btn-secondary"><i data-feather="zap"></i>
+                        Test</button>
+                    <button type="submit" id="save-db-connection" class="btn btn-primary"><i data-feather="save"></i>
+                        Save</button>
+                </div>
+            </form>
+            <div id="db-status-message" class="mt-4"></div>
+            <div class="mt-4">
+                <label class="form-label">Tables</label>
+                <div class="flex items-center gap-2 mb-2">
+                    <select id="table-filter" class="form-input" style="max-width:240px">
+                        <option value="all">Show: All Tables</option>
+                        <option value="selected">Show: Selected</option>
+                    </select>
+                    <button id="btn-select-all" class="btn btn-secondary" title="Select all tables">Select All</button>
+                    <button id="btn-deselect-all" class="btn btn-secondary" title="Deselect all tables">Deselect All</button>
+                    <button id="btn-refresh-tables" class="btn btn-secondary" title="Reload tables from DB">Refresh Tables</button>
+                </div>
+                <div id="tables-container" style="max-height:260px; overflow:auto; border:1px solid #ddd; padding:8px;"></div>
+                <div class="mt-2">
+                    <button id="save-tables-btn" class="btn btn-primary"><i data-feather="save"></i> Save Selected Tables</button>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <section id="learning-step" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step2">
+                <span>Step 2 — Auto-logging for Learning</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step2" class="p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <input id="auto-learn" type="checkbox" />
+                    <label for="auto-learn">Enable auto logging of queries for learning</label>
+                </div>
+                <button id="save-learning" class="btn btn-secondary"><i data-feather="save"></i> Save Learning Settings</button>
+                <button id="btn-reindex" class="btn btn-warning ml-2" title="Re-index now (learning)"><i data-feather="refresh-ccw"></i> Re-index</button>
+                <div id="learning-status" class="mt-3 text-sm text-gray-600"></div>
+            </div>
+        </section>
+
+        <section id="training-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step3">
+                <span>Step 3 — Build Knowledge Base</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step3" class="p-4">
+            <p class="text-sm text-gray-600 mb-3">Build/rebuild schema embeddings for the currently saved database. This
+                may take time.</p>
+            <div class="flex space-x-3">
+                <button type="button" id="run-training-script" class="btn btn-success">
+                    <i data-feather="database" class="w-4 h-4"></i> Build/Rebuild Embeddings
+                </button>
+                <button type="button" id="reload-faiss-btn" class="btn btn-warning" style="display:none">
+                    <i data-feather="refresh-ccw" class="w-4 h-4"></i> Reload Knowledge Base
+                </button>
+            </div>
+            <div id="training-status-message" class="mt-4"></div>
+            <div id="reload-status-message" class="mt-2"></div>
+            </div>
+        </section>
+
+        <section id="harvest-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step4">
+                <span>Step 4 — Metadata Harvest</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step4" class="p-4">
+                <p class="text-sm text-gray-600 mb-2">Pull metadata (assets/tables/columns) into the metadata store and make it searchable for the explorer.</p>
+                <div class="flex items-center gap-2 mb-3">
+                    <input id="harvest-q" type="text" class="form-input" placeholder="Search assets (q)..." style="max-width:260px" />
+                    <button id="btn-harvest-search" class="btn btn-secondary"><i data-feather="search"></i> Search</button>
+                    <button id="btn-harvest-sources" class="btn btn-secondary"><i data-feather="list"></i> List Sources</button>
+                    <button id="btn-harvest-run" class="btn btn-success"><i data-feather="play"></i> Harvest Metadata</button>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bulk Upload (JSON array of {Asset, Columns} items)</label>
+                    <input id="harvest-file" type="file" accept="application/json" />
+                    <button id="btn-harvest-upload" class="btn btn-primary ml-2"><i data-feather="upload"></i> Upload</button>
+                </div>
+                <div id="harvest-status" class="text-sm text-gray-600 mb-2"></div>
+                <div id="harvest-results" class="text-sm" style="max-height:220px; overflow:auto; border:1px solid #e5e7eb; padding:.5rem"></div>
+            </div>
+        </section>
+
+        <section id="inference-section" class="border rounded mb-2">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step5">
+                <span>Step 5 — Model Selection</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step5" class="p-4 grid gap-3">
+                <div>
+                    <label class="form-label" for="inference-mode">Choose Model</label>
+                    <select id="inference-mode" class="form-input">
+                        <option value="gemini">Gemini 1.5 Flash</option>
+                        <option value="local">Local Model</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="auto-summarize" type="checkbox" />
+                    <label for="auto-summarize">Auto generate business summaries after results</label>
+                </div>
+                <div>
+                    <button id="save-inference" class="btn btn-primary"><i data-feather="save"></i> Save</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="ux-defaults" class="border rounded mb-8">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step6">
+                <span>UX Defaults</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step6" class="p-4 grid gap-3">
+                <div>
+                    <label class="form-label" for="default-mode">Default Mode</label>
+                    <select id="default-mode" class="form-input" style="max-width:220px">
+                        <option value="biz">Business</option>
+                        <option value="dev">Developer</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="save-ux" class="btn btn-primary"><i data-feather="save"></i> Save UX Defaults</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        feather.replace();
+        const dbConfigForm = document.getElementById('db-config-form');
+        const testDbBtn = document.getElementById('test-db-connection');
+        const dbStatusMsg = document.getElementById('db-status-message');
+        const runTrainingBtn = document.getElementById('run-training-script');
+        const trainingStatusMsg = document.getElementById('training-status-message');
+        const reloadFaissBtn = document.getElementById('reload-faiss-btn');
+        const reloadStatusMsg = document.getElementById('reload-status-message');
+        const reindexBtn = document.getElementById('btn-reindex');
+        const learningStatus = document.getElementById('learning-status');
+
+        // Accordion interactions
+        document.querySelectorAll('[data-acc="toggle"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('aria-controls');
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.display = (el.style.display === 'none') ? '' : 'none';
+                feather.replace();
+            });
+        });
+
+        function showDbStatus(message, type = 'info') {
+            dbStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        }
+        function showTrainingStatus(message, type = 'info') {
+            trainingStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        }
+        function showReloadStatus(message, type = 'info') {
+            reloadStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        }
+
+        async function loadCurrentDbConfig() {
+            showDbStatus('Loading current configuration...', 'info');
+            try {
+                const res = await fetch('/api/settings/db/current');
+                const config = await res.json();
+                if (res.ok && config && config.database) {
+                    document.getElementById('db-driver').value = config.driver || 'ODBC Driver 17 for SQL Server';
+                    document.getElementById('db-server').value = config.server || '';
+                    document.getElementById('db-name').value = config.database || '';
+                    document.getElementById('db-user').value = config.uid || '';
+                    document.getElementById('db-password').value = '';
+                    document.getElementById('db-timeout').value = config.timeout || 30;
+                    showDbStatus(`Loaded config for '${config.database}'. You can test or modify.`, 'success');
+                } else {
+                    showDbStatus(config.message || 'No active configuration. Please enter new details.', 'info');
+                }
+            } catch (error) {
+                console.error("Error loading current DB config for form:", error);
+                showDbStatus('Error loading config. Please enter new details.', 'danger');
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            loadCurrentDbConfig();
+        });
+
+        testDbBtn.addEventListener('click', async () => {
+            const fd = new FormData(dbConfigForm); const details = Object.fromEntries(fd.entries());
+            details.timeout = parseInt(details.timeout, 10);
+            showDbStatus('Testing... <i data-feather="loader" class="animate-spin"></i>', 'info'); testDbBtn.disabled = true;
+            try {
+                const res = await fetch('/api/settings/db/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) });
+                const result = await res.json();
+                showDbStatus(result.message, result.status === 'success' ? 'success' : 'danger');
+            } catch (e) { showDbStatus(`Error: ${e.message}`, 'danger'); }
+            finally { testDbBtn.disabled = false; feather.replace(); }
+        });
+
+        dbConfigForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData(dbConfigForm); const details = Object.fromEntries(fd.entries());
+            details.timeout = parseInt(details.timeout, 10);
+            showDbStatus('Saving... <i data-feather="loader" class="animate-spin"></i>', 'info');
+            const saveBtn = dbConfigForm.querySelector('button[type="submit"]');
+            saveBtn.disabled = true; testDbBtn.disabled = true;
+            try {
+                const res = await fetch('/api/settings/db/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) });
+                const result = await res.json();
+                showDbStatus(result.message, result.status === 'success' ? 'success' : 'danger');
+                if (result.status === 'success') {
+                    showTrainingStatus('Configuration saved. Build embeddings for this database configuration if this is a new setup or if the schema has changed.', 'info');
+                }
+            } catch (e) { showDbStatus(`Error: ${e.message}`, 'danger'); }
+            finally { saveBtn.disabled = false; testDbBtn.disabled = false; feather.replace(); }
+        });
+
+        runTrainingBtn.addEventListener('click', async () => {
+            showTrainingStatus('Initiating build... <i data-feather="loader" class="animate-spin"></i> This may take some time. Check server logs.', 'info');
+            runTrainingBtn.disabled = true; reloadFaissBtn.disabled = true;
+            try {
+                const res = await fetch('/api/training/run', { method: 'POST' });
+                const result = await res.json();
+                showTrainingStatus(result.message, (res.status === 202 || result.status === 'success') ? 'info' : 'danger');
+                if (res.status === 202 || result.status === 'success') { // Accepted/background
+                    showReloadStatus('Training initiated/completed. Reload Knowledge Base for changes to take effect in the chat.', 'info');
+                    reloadFaissBtn.style.display = '';
+                } else { reloadFaissBtn.style.display = 'none'; }
+            } catch (e) { showTrainingStatus(`Error initiating training: ${e.message}`, 'danger'); }
+            finally { runTrainingBtn.disabled = false; reloadFaissBtn.disabled = false; feather.replace(); }
+        });
+
+        reloadFaissBtn.addEventListener('click', async () => {
+            showReloadStatus('Reloading Knowledge Base... <i data-feather="loader" class="animate-spin"></i>', 'info');
+            reloadFaissBtn.disabled = true; runTrainingBtn.disabled = true;
+            try {
+                const res = await fetch('/api/faiss/reload', { method: 'POST' });
+                const result = await res.json();
+                showReloadStatus(result.message, result.status === 'success' ? 'success' : 'danger');
+            } catch (e) { showReloadStatus(`Error: ${e.message}`, 'danger'); }
+            finally { reloadFaissBtn.disabled = false; runTrainingBtn.disabled = false; feather.replace(); }
+        });
+        reindexBtn.addEventListener('click', async ()=>{
+            learningStatus.textContent = 'Re-index requested...';
+            reindexBtn.disabled = true;
+            try{
+                const r = await fetch('/api/learn/reindex', { method:'POST' });
+                const j = await r.json();
+                learningStatus.textContent = (j && j.message) ? j.message : 'Re-index requested.';
+            }catch(e){ learningStatus.textContent = 'Failed: ' + e.message; }
+            finally{ reindexBtn.disabled = false; }
+        });
+        //naveed edited
+        async function fetchWithTimeout(url, options = {}, ms = 10000) {
+            const c = new AbortController();
+            const id = setTimeout(() => c.abort(), ms);
+            try { return await fetch(url, { ...options, signal: c.signal }); }
+            finally { clearTimeout(id); }
+        }
+
+        dbConfigForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fd = new FormData(dbConfigForm);
+            const details = Object.fromEntries(fd.entries());
+            details.timeout = parseInt(details.timeout, 10);
+
+            showDbStatus('Saving... <i data-feather="loader" class="animate-spin"></i>', 'info');
+            const saveBtn = dbConfigForm.querySelector('button[type="submit"]');
+            saveBtn.disabled = true; testDbBtn.disabled = true;
+
+            try {
+                const res = await fetchWithTimeout('/api/settings/db/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(details)
+                }, 10000);
+
+                const result = await res.json().catch(() => ({ message: 'Saved' }));
+                showDbStatus(result.message || 'Saved. Pool is initializing in background.', 'success');
+                showTrainingStatus('Next: Build embeddings if schema changed.', 'info');
+            } catch (e) {
+                const msg = e.name === 'AbortError'
+                    ? 'Saving is taking longer than expected. Settings saved; pool will continue initializing in background.'
+                    : `Error: ${e.message}`;
+                showDbStatus(msg, e.name === 'AbortError' ? 'info' : 'danger');
+            } finally {
+                saveBtn.disabled = false; testDbBtn.disabled = false; feather.replace();
+            }
+        });
+
+        // Load all available tables and mark previously saved selections.
+        async function loadTables() {
+            const res = await fetch('/api/settings/tables/list');
+            const json = await res.json();
+            const cont = document.getElementById('tables-container');
+            cont.innerHTML = '';
+            const selected = new Set(json.selected || []);
+            (json.tables || []).forEach(t => {
+                const id = 'tbl_' + t.replace(/\W/g,'_');
+                cont.insertAdjacentHTML('beforeend', `
+                <label style="display:block">
+                    <input type="checkbox" id="${id}" value="${t}" ${selected.has(t) ? 'checked' : ''}/>
+                    ${t}
+                </label>
+                `);
+            });
+            // Apply filter view
+            applyTableFilter();
+        }
+        function applyTableFilter(){
+            const mode = (document.getElementById('table-filter')?.value)||'all';
+            const boxes = [...document.querySelectorAll('#tables-container input[type=checkbox]')];
+            boxes.forEach(b=>{
+                const show = (mode==='all') || (mode==='selected' && b.checked);
+                const row = b.closest('label');
+                if (row) row.style.display = show ? 'block' : 'none';
+            });
+        }
+        document.getElementById('table-filter').addEventListener('change', applyTableFilter);
+        document.getElementById('btn-select-all').addEventListener('click', ()=>{
+            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=true);
+        });
+        document.getElementById('btn-deselect-all').addEventListener('click', ()=>{
+            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=false);
+        });
+        document.getElementById('btn-refresh-tables').addEventListener('click', loadTables);
+
+        // Persist user-selected tables for training/indexing filter
+        document.getElementById('save-tables-btn').addEventListener('click', async () => {
+        const boxes = [...document.querySelectorAll('#tables-container input[type=checkbox]')];
+        const chosen = boxes.filter(b => b.checked).map(b => b.value);
+        const res = await fetch('/api/settings/tables/save', {
+            method:'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ tables: chosen })
+        });
+        const out = await res.json();
+        alert(out.status === 'success' ? `Saved ${out.count} tables.` : 'Save failed.');
+        });
+
+        // Load table list on page open
+        loadTables();
+
+        // Inference settings
+        async function loadInference() {
+            try {
+                const r = await fetch('/api/settings/inference');
+                const j = await r.json();
+                document.getElementById('inference-mode').value = (j && j.inference) || 'gemini';
+            } catch (e) {}
+        }
+        document.getElementById('save-inference').addEventListener('click', async () => {
+            const val = document.getElementById('inference-mode').value;
+            try {
+                await fetch('/api/settings/inference', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ inference: val }) });
+                alert('Inference mode saved.');
+            } catch (e) {
+                alert('Failed to save inference mode.');
+            }
+            try {
+                const autoSum = document.getElementById('auto-summarize').checked;
+                await fetch('/api/settings/auto_summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_summarize: autoSum }) });
+            } catch (e) {}
+        });
+
+        // Learning settings
+        async function loadLearning() {
+            try {
+                const r = await fetch('/api/settings/learning');
+                const j = await r.json();
+                document.getElementById('auto-learn').checked = !!(j && j.auto_log_learning);
+            } catch (e) {}
+            try {
+                const r2 = await fetch('/api/settings/auto_summarize');
+                const j2 = await r2.json();
+                document.getElementById('auto-summarize').checked = !!(j2 && j2.auto_summarize);
+            } catch (e) {}
+        }
+        document.getElementById('save-learning').addEventListener('click', async () => {
+            const enabled = document.getElementById('auto-learn').checked;
+            try {
+                await fetch('/api/settings/learning', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_log_learning: enabled }) });
+                alert('Learning setting saved.');
+            } catch (e) {
+                alert('Failed to save learning setting.');
+            }
+        });
+
+        // Harvest
+        const harvestStatus = document.getElementById('harvest-status');
+        function setHarvest(msg){ harvestStatus.textContent = msg; }
+        document.getElementById('btn-harvest-sources').addEventListener('click', async ()=>{
+            setHarvest('Loading sources...');
+            try{ const r = await fetch('/api/metadata/sources'); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Failed to load sources'); }
+        });
+        document.getElementById('btn-harvest-search').addEventListener('click', async ()=>{
+            const q = (document.getElementById('harvest-q').value||'').trim(); setHarvest('Searching...');
+            try{ const r = await fetch(`/api/metadata/assets?q=${encodeURIComponent(q)}&limit=50`); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Search failed'); }
+        });
+        document.getElementById('btn-harvest-upload').addEventListener('click', async ()=>{
+            const f = document.getElementById('harvest-file').files[0]; if(!f){ alert('Please choose a JSON file.'); return; }
+            try{ const txt = await f.text(); const payload = JSON.parse(txt); setHarvest('Uploading...'); const r = await fetch('/api/metadata/bulk_upsert', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const j = await r.json(); setHarvest(`Upserted: ${j.upserted}`); }catch(e){ setHarvest('Upload failed'); }
+        });
+
+        // Run server-side harvest (existing endpoint expected)
+        document.getElementById('btn-harvest-run').addEventListener('click', async ()=>{
+            setHarvest('Harvesting...');
+            try{
+                const resp = await fetch('/api/metadata/harvest', { method:'POST' });
+                if(resp.status === 404){ setHarvest('Harvest endpoint not found.'); return; }
+                const j = await resp.json().catch(()=>({status:'ok'}));
+                setHarvest(j.message || 'Harvest requested.');
+            }catch(e){ setHarvest('Harvest failed'); }
+        });
+
+        loadInference();
+        loadLearning();
+        // default collapse all but first
+        ['step2','step3','step4','step5','step6'].forEach(id=>{ const el = document.getElementById(id); if (el) el.style.display='none'; });
+
+        // UX defaults persistence via localStorage
+        const LS_MODE_KEY = 'asklytics_ui_mode';
+        (function initUx(){ const m = localStorage.getItem(LS_MODE_KEY)||'biz'; const sel = document.getElementById('default-mode'); if(sel) sel.value = m; })();
+        document.getElementById('save-ux').addEventListener('click', ()=>{
+            const m = document.getElementById('default-mode').value; localStorage.setItem(LS_MODE_KEY, m); alert('Saved default UI mode.');
+        });
+
+        // Chat session limit setting
+        (async function loadChatLimit(){
+            try{ const r = await fetch('/api/config/chat_limit'); const j = await r.json();
+                const input = document.createElement('div');
+                input.innerHTML = '<label class="form-label" for="chat-limit">Chat Sessions Limit</label><input id="chat-limit" type="number" min="1" max="50" class="form-input" style="max-width:160px" /> <button id="save-chat-limit" class="btn btn-primary" style="margin-left:.5rem"><i data-feather="save"></i> Save</button>';
+                document.getElementById('ux-defaults').querySelector('#step6').appendChild(input);
+                document.getElementById('chat-limit').value = (j && j.chat_session_limit) || 5;
+                document.getElementById('save-chat-limit').addEventListener('click', async ()=>{
+                    const v = parseInt(document.getElementById('chat-limit').value, 10);
+                    try{ await fetch('/api/config/chat_limit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chat_session_limit: v }) }); alert('Saved chat session limit.'); }catch(e){ alert('Failed to save chat session limit'); }
+                });
+                feather.replace();
+            }catch(e){}
+        })();
+    </script>
+</body>
+
+</html>

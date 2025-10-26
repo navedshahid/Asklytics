@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SQL Query Agent</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        .sql-code-block {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .toggle-sql-button {
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+            padding: 4px 8px;
+            font-size: 0.8em;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .toggle-sql-button:hover {
+            background-color: #d0d0d0;
+        }
+        .results-table-container {
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        .results-table th {
+            background-color: #f7fafc;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .user-query-time-info, .backend-time-info { /* Combined user-facing time and backend specific times */
+            font-size: 0.8em;
+            color: #555;
+            margin-top: 8px;
+            padding-top: 8px;
+        }
+        .user-query-time-info {
+             border-top: 1px solid #aaa; /* More prominent separator for total user time */
+        }
+        .backend-time-info {
+             border-top: 1px dashed #eee; /* Dashed for backend specifics */
+        }
+  </style>
+</head>
+<body class="bg-gray-100 h-screen flex font-sans">
+
+  <!-- Sidebar (same) -->
+  <div class="w-72 bg-blue-600 text-white p-4 flex flex-col">
+    <h1 class="text-2xl font-bold mb-6">Generative Data Science</h1>
+    <div id="new-conversation" class="bg-yellow-300 text-black p-3 rounded cursor-pointer font-semibold mb-4">
+      🧠 New Conversation
+    </div>
+    <div class="space-y-2 flex-1 overflow-y-auto" id="conversation-history">
+    </div>
+    <div class="mt-auto text-sm text-white">v1.3.1</div>
+  </div>
+
+  <!-- Main Chat Area (same) -->
+  <div class="flex-1 flex flex-col">
+    <div class="flex items-center justify-between px-6 py-4 border-b bg-white">
+      <div class="relative inline-block text-left mt-2 ml-4">
+        <label for="modelSelect" class="text-sm font-medium text-gray-700">Choose Model:</label>
+        <select id="modelSelect" class="mt-1 block w-64 rounded border border-gray-300 py-2 px-3 shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            <option disabled selected>Loading models...</option>
+        </select>
+    </div>
+    <div id="db-info" class="text-sm text-gray-700">
+    </div>
+    </div>
+    <div id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-4">
+      <div class="flex">
+        <div class="bg-blue-100 text-black p-3 rounded-lg max-w-xl">
+          Hello! How can I assist you today?
+        </div>
+      </div>
+    </div>
+    <div class="p-4 border-t bg-white">
+      <form id="chat-form" class="flex gap-2">
+        <input type="text" id="user-input" class="flex-1 p-2 border rounded" placeholder="Type your query..." required />
+        <button type="submit" id="send-button" class="bg-blue-600 text-white px-4 py-2 rounded">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // --- Initial Setup (Model Loading, DB Info) --- (Same)
+    window.addEventListener('DOMContentLoaded', async () => {
+        const dropdown = document.getElementById('modelSelect');
+        try {
+            const res = await fetch('/api/models');
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            const modelsData = await res.json();
+            dropdown.innerHTML = '';
+            const modelsArray = Array.isArray(modelsData) ? modelsData : (modelsData.current_model ? [modelsData.current_model] : []);
+            if (modelsArray.length > 0) {
+                modelsArray.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    dropdown.appendChild(option);
+                });
+            } else {
+                 dropdown.innerHTML = '<option>No models available</option>';
+            }
+        } catch (error) {
+            dropdown.innerHTML = '<option>Error loading models</option>';
+            console.error('Model load error:', error);
+        }
+
+        const dbInfoDiv = document.getElementById('db-info');
+        try {
+            const dbInfoRes = await fetch('/api/db_info');
+            if (!dbInfoRes.ok) throw new Error(`HTTP error! status: ${dbInfoRes.status}`);
+            const dbInfo = await dbInfoRes.json();
+            dbInfoDiv.textContent = `Connected to: ${dbInfo.server} - ${dbInfo.database}`;
+        } catch (error) {
+            dbInfoDiv.textContent = 'Failed to load database info';
+            console.error('DB Info load error:', error);
+        }
+    });
+
+    // --- Chat Functionality ---
+    const chatForm = document.getElementById("chat-form");
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendButton = document.getElementById("send-button");
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const question = userInput.value.trim();
+      if (!question) return;
+
+      // *** START TIMER ***
+      const queryStartTime = performance.now(); // High-resolution timer
+
+      sendButton.disabled = true;
+      sendButton.classList.add("opacity-50", "cursor-not-allowed");
+      sendButton.innerText = "Sending...";
+
+      appendMessage(question, 'user');
+      userInput.value = "";
+
+      let queryEndTime; // To store the end time
+
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+        
+        queryEndTime = performance.now(); // Capture end time after fetch completes
+        const userVisibleDuration = (queryEndTime - queryStartTime) / 1000; // Convert to seconds
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: `HTTP error! Status: ${res.status}` }));
+            throw new Error(errorData.error || `Request failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+            appendMessage(`Error: ${data.error}`, 'bot-error', userVisibleDuration); // Pass duration
+        } else if (data.query && data.data && data.columns) {
+            appendBotResponse(
+                data.query, 
+                data.columns, 
+                data.data, 
+                data.sql_execution_time_seconds, 
+                data.total_processing_time_seconds,
+                userVisibleDuration // Pass user-visible duration
+            );
+        } else {
+            appendMessage("Received an unexpected response from the server.", 'bot-error', userVisibleDuration); // Pass duration
+        }
+
+      } catch (err) {
+        queryEndTime = performance.now(); // Capture end time even on error
+        const userVisibleDurationOnError = (queryEndTime - queryStartTime) / 1000;
+        console.error("Fetch error:", err);
+        appendMessage(`Error: ${err.message}`, 'bot-error', userVisibleDurationOnError); // Pass duration
+      } finally {
+        sendButton.disabled = false;
+        sendButton.classList.remove("opacity-50", "cursor-not-allowed");
+        sendButton.innerText = "Send";
+      }
+    });
+
+    // Modified appendMessage to optionally include user-visible time
+    function appendMessage(text, type, userVisibleDuration = null) {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = "flex mb-2";
+      const contentWrapper = document.createElement("div"); // Wrapper for content + time
+      
+      const contentDiv = document.createElement("div");
+      contentDiv.classList.add("p-3", "rounded-lg", "max-w-xl", "whitespace-pre-wrap");
+
+      if (type === 'user') {
+        messageDiv.classList.add("justify-end");
+        contentDiv.classList.add("bg-green-200", "text-gray-800");
+        contentDiv.textContent = text;
+        contentWrapper.appendChild(contentDiv);
+      } else if (type === 'bot-error') {
+        contentDiv.classList.add("bg-red-100", "text-red-700");
+        contentDiv.textContent = text;
+        contentWrapper.appendChild(contentDiv);
+        if (userVisibleDuration !== null) {
+            const timeInfoDiv = document.createElement("div");
+            timeInfoDiv.className = "user-query-time-info text-right"; // Align right for errors under user message
+            timeInfoDiv.textContent = `(Responded in ${userVisibleDuration.toFixed(3)}s)`;
+            contentWrapper.appendChild(timeInfoDiv);
+        }
+      }
+      
+      messageDiv.appendChild(contentWrapper);
+      chatBox.appendChild(messageDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Modified appendBotResponse to include user-visible time
+    function appendBotResponse(sqlQuery, columns, resultsData, sqlExecTime, totalProcTime, userVisibleDuration) {
+        const botMessageContainer = document.createElement("div");
+        botMessageContainer.className = "flex mb-2";
+
+        const botContentWrapper = document.createElement("div");
+        botContentWrapper.className = "bg-blue-100 text-black p-3 rounded-lg max-w-2xl w-full";
+
+        const toggleButton = document.createElement("button");
+        toggleButton.textContent = "Show SQL";
+        toggleButton.className = "toggle-sql-button";
+        const sqlDiv = document.createElement("div");
+        sqlDiv.className = "sql-code-block";
+        sqlDiv.style.display = "none";
+        const sqlCodeElement = document.createElement("code");
+        sqlCodeElement.textContent = sqlQuery;
+        sqlDiv.appendChild(sqlCodeElement);
+        toggleButton.onclick = () => {
+            const isHidden = sqlDiv.style.display === "none";
+            sqlDiv.style.display = isHidden ? "block" : "none";
+            toggleButton.textContent = isHidden ? "Hide SQL" : "Show SQL";
+        };
+
+        const resultsHeaderDiv = document.createElement("div");
+        resultsHeaderDiv.style.marginTop = "10px";
+        const resultsHeaderText = document.createElement("strong");
+        resultsHeaderText.textContent = "Result:";
+        resultsHeaderDiv.appendChild(resultsHeaderText);
+        
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "results-table-container";
+        if (resultsData.length > 0) {
+            const table = createHtmlTable(columns, resultsData);
+            tableContainer.appendChild(table);
+        } else {
+            const noDataP = document.createElement("p");
+            noDataP.textContent = "Query executed successfully, but no data was returned.";
+            noDataP.style.padding = "10px";
+            tableContainer.appendChild(noDataP);
+        }
+
+        // Backend-specific time info
+        const backendTimeInfoDiv = document.createElement("div");
+        backendTimeInfoDiv.className = "backend-time-info";
+        let backendTimeText = "";
+        if (typeof sqlExecTime === 'number') {
+            backendTimeText += `SQL Execution: ${sqlExecTime.toFixed(3)}s`;
+        }
+        if (typeof totalProcTime === 'number') {
+            backendTimeText += (backendTimeText ? " | " : "") + `Backend Processing: ${totalProcTime.toFixed(3)}s`;
+        }
+        if (backendTimeText) {
+            backendTimeInfoDiv.textContent = backendTimeText;
+        }
+
+        // User-visible total time info
+        const userTimeInfoDiv = document.createElement("div");
+        userTimeInfoDiv.className = "user-query-time-info";
+        if (userVisibleDuration !== null) {
+            userTimeInfoDiv.textContent = `(Responded in ${userVisibleDuration.toFixed(3)}s)`;
+        }
+        
+        botContentWrapper.appendChild(toggleButton);
+        botContentWrapper.appendChild(sqlDiv);
+        botContentWrapper.appendChild(resultsHeaderDiv);
+        botContentWrapper.appendChild(tableContainer);
+        if (backendTimeText) {
+            botContentWrapper.appendChild(backendTimeInfoDiv); 
+        }
+        if (userVisibleDuration !== null) {
+            botContentWrapper.appendChild(userTimeInfoDiv);
+        }
+        
+        botMessageContainer.appendChild(botContentWrapper);
+        chatBox.appendChild(botMessageContainer);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // createHtmlTable function (same as before)
+    function createHtmlTable(columns, data) {
+        const table = document.createElement("table");
+        table.className = "results-table";
+        const thead = table.createTHead();
+        const headerRow = thead.insertRow();
+        columns.forEach(colName => {
+            const th = document.createElement("th");
+            th.textContent = colName;
+            headerRow.appendChild(th);
+        });
+        const tbody = table.createTBody();
+        data.forEach(rowData => {
+            const row = tbody.insertRow();
+            columns.forEach(colName => {
+                const cell = row.insertCell();
+                cell.textContent = rowData[colName] !== null && rowData[colName] !== undefined ? rowData[colName] : "NULL";
+            });
+        });
+        return table;
+    }
+    
+    // New Conversation Functionality (Same as before)
+    document.getElementById("new-conversation").addEventListener("click", () => {
+      chatBox.innerHTML = `<div class="flex">
+        <div class="bg-blue-100 text-black p-3 rounded-lg max-w-xl">
+          Hello! How can I assist you today?
+        </div>
+      </div>`;
+      userInput.value = "";
+      sendButton.disabled = false;
+      sendButton.classList.remove("opacity-50", "cursor-not-allowed");
+      sendButton.innerText = "Send";
+    });
+  </script>
+</body>
+</html>

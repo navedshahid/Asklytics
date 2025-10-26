@@ -1,0 +1,2 @@
+asklytics_learning_engine.main --reindex
+python -m asklytics_learning_engine.main --nightly

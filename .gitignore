@@ -1,0 +1,142 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+*.pyd
+*.dll
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+models/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Type checking
+.mypy_cache/
+.pyre/
+.pytype/
+.pyright/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environments
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# IDEs and editors
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temp files
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
+# Data files (often large/generated)
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+*.orc
+*.db
+*.sqlite
+*.sqlite3
+*.joblib
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.npy
+*.npz
+
+# Exceptions: small binary arrays required by app
+!schema_strings.npy
+
+# ML models / checkpoints
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.tflite
+*.pb
+*.safetensors
+*.gguf
+*.bin
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.xz
+*.7z
+*.rar
+
+# Office temporary and spreadsheets
+~$*
+*.xlsx
+*.xlsm
+*.xlsb
+
+# SQLite WAL/SHM files (ephemeral)
+*.db-wal
+*.db-shm

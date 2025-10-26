@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Asklytics - Generative Data Science</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/asklytics_ui.js"></script>
+    <link rel="stylesheet" href="/static/css/asklytics.css" />
+    <style>
+        :root { --sidebar-width: 288px; --sidebar-width-collapsed: 64px; --header-height: 60px; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #333e48; overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background-color: #ffffff; border-right: 1px solid #e5e7eb; transition: width 0.3s ease-in-out; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar.collapsed { width: var(--sidebar-width-collapsed); }
+        .sidebar.collapsed .sidebar-title-text, .sidebar.collapsed .new-session-text, .sidebar.collapsed .history-item-title, .sidebar.collapsed .delete-history-btn, .sidebar.collapsed .version-text { display: none; }
+        .sidebar.collapsed .new-conversation-btn, .sidebar.collapsed .history-item { justify-content: center; }
+        .sidebar-header { padding: 1.25rem; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; }
+        .sidebar-title-icon { color: #0d6efd; margin-right: 0.5rem; }
+        .sidebar-title-text { font-size: 1.125rem; font-weight: 600; color: #2d3748; white-space: nowrap; }
+        .new-conversation-btn { display: flex; align-items: center; padding: 0.75rem 1rem; margin: 0.75rem; border-radius: 0.375rem; background-color: #0d6efd; color: white; font-weight: 500; transition: background-color 0.2s ease-in-out; border: none; white-space: nowrap; overflow: hidden; }
+        .new-conversation-btn:hover { background-color: #0b5ed7; }
+        .conversation-history-list { margin-top: 0.25rem; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 1rem; font-size: 0.875rem; color: #4a5568; cursor: pointer; border-radius: 0.375rem; margin: 0.125rem 0.75rem; transition: all 0.15s ease-in-out; white-space: nowrap; overflow: hidden; }
+        .history-item:hover { background-color: #edf2f7; }
+        .history-item.active { background-color: #e2e8f0; font-weight: 500; color: #2c5282; }
+        .history-item-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; margin-right: 0.5rem; }
+        .delete-history-btn { background: none; border: none; color: #a0aec0; padding: 0.25rem; line-height: 1; display: none; transition: color 0.15s ease-in-out; flex-shrink: 0; }
+        .history-item:hover .delete-history-btn { display: inline-flex; }
+        .main-content-wrapper { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .app-header { height: var(--header-height); background-color: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .sidebar-toggle-btn { background: none; border: none; color: #4a5568; padding: 0.5rem; margin-right: 0.75rem; border-radius: 0.25rem; transition: background-color 0.2s; }
+        .sidebar-toggle-btn:hover { background-color: #edf2f7; }
+        .db-info-header { display: flex; align-items: center; font-size: 0.875rem; color: #718096; }
+        .db-info-header i { margin-right: 0.375rem; }
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 1.5rem; background-color: #f4f7f9; }
+        .chat-input-area { background-color: #ffffff; border-top: 1px solid #e5e7eb; padding: 1rem 1.5rem; box-shadow: 0 -2px 10px rgba(0,0,0,0.02); }
+        .chat-input { border: 1px solid #d1d5db; padding: 0.75rem 1rem; font-size: 0.9375rem; background-color: #f9fafb; width: 100%; }
+        .chat-input:focus { border-color: #6366f1; box-shadow: 0 0 0 0.125rem rgba(99, 102, 241, 0.25); }
+        .send-btn { background-color: #4f46e5; padding: 0.75rem 1.125rem; }
+        .send-btn:hover { background-color: #4338ca; }
+        .send-btn:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+        .chat-message { display: flex; margin-bottom: 1.25rem; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message-bubble { padding: 0.875rem 1.125rem; border-radius: 0.75rem; max-width: 90%; line-height: 1.6; font-size: 0.9375rem; }
+        .user-message { justify-content: flex-end; }
+        .user-message .message-bubble { background-color: #4f46e5; color: white; border-bottom-right-radius: 0.25rem; }
+        .bot-message .message-bubble { background-color: #ffffff; color: #374151; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-bottom-left-radius: 0.25rem; }
+        .bot-message.error .message-bubble { background-color: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+        .sql-code-block { background-color: #1f2937; color: #d1d5db; padding: 0.875rem; border-radius: 0.375rem; font-family: 'Roboto Mono', monospace; font-size: 0.875rem; white-space: pre-wrap; word-break: break-all; margin-top: 0.5rem; margin-bottom: 0.75rem; max-height: 200px; overflow-y: auto; }
+        .toggle-sql-button { background-color: transparent; color: #4f46e5; border: none; padding: 0.25rem 0.5rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; cursor: pointer; margin-bottom: 0.75rem; display: inline-flex; align-items: center; }
+        .results-table-container { margin-top: 0.5rem; max-height: 350px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 0.375rem; background-color: #fff;}
+        .results-table { width: 100%; }
+        .results-table th, .results-table td { border-bottom: 1px solid #e5e7eb; padding: 0.625rem 0.875rem; text-align: left; font-size: 0.875rem; }
+        .results-table th { background-color: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; }
+        .no-data-message { padding: 1rem; color: #6b7280; font-style: italic; }
+    </style>
+    <script src="/static/js/feedback.js"></script>\n</head>
+<body class="h-screen">
+
+<div class="app-container">
+  <aside id="app-sidebar" class="sidebar">
+    <div class="sidebar-header flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-feather="bar-chart-2" class="sidebar-title-icon w-6 h-6"></i>
+          <span class="sidebar-title-text">AskLytics</span>
+        </div>
+        <nav class="hidden md:flex items-center gap-3 text-sm text-gray-600">
+          <a class="hover:text-blue-600" href="/settings">Settings</a>
+          <a class="hover:text-blue-600" href="/dashboard">Dashboard</a>
+          <a id="open-explorer" class="hover:text-blue-600" href="#">Metadata Explorer</a>
+        </nav>
+    </div>
+    <button id="new-conversation-btn" class="new-conversation-btn">
+      <i data-feather="plus-circle" class="w-5 h-5"></i> <span class="new-session-text">New Session</span>
+    </button>
+    <div class="flex-1 overflow-y-auto conversation-history-list" id="conversation-history-list"></div>
+    <div class="p-4 text-xs text-gray-400 border-t border-gray-200 text-center">
+        <span class="version-text">Version 3.1.0</span>
+    </div>
+  </aside>
+
+  <div class="main-content-wrapper">
+    <header class="app-header">
+        <div class="flex items-center gap-2">
+            <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                <i data-feather="menu" class="w-5 h-5"></i>
+            </button>
+            <div class="hidden md:flex items-center gap-2 text-sm">
+                <span class="text-gray-500">Mode:</span>
+                <button id="mode-dev" class="px-2 py-0.5 border rounded bg-blue-50" title="Developer Mode">Developer</button>
+                <button id="mode-biz" class="px-2 py-0.5 border rounded" title="Business Mode">Business</button>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/settings" title="Settings"><i data-feather="settings" class="w-5 h-5"></i></a>
+            <a href="/dashboard" title="Dashboard"><i data-feather="bar-chart-2" class="w-5 h-5"></i></a>
+            <div id="db-info" class="db-info-header">
+                <i data-feather="database" class="inline-block w-4 h-4 text-gray-400"></i>
+                <span>Connecting...</span>
+            </div>
+        </div>
+    </header>
+    <main class="chat-area">
+        <section id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-5"></section>
+
+        <div id="result-tabs" class="card hidden" style="margin:0 24px 16px 24px;">
+          <div class="tabs" style="display:flex; gap:.5rem; margin-bottom:.5rem;">
+            <button data-tab="results" class="px-2 py-1 border rounded">Results</button>
+            <button data-tab="visuals" class="px-2 py-1 border rounded">Visuals</button>
+            <button data-tab="sql" class="px-2 py-1 border rounded">SQL</button>
+          </div>
+          <section id="tab-results" class="tab-pane">
+            <div id="results-container"></div>
+          </section>
+          <section id="tab-visuals" class="tab-pane hidden"><canvas id="resultChart"></canvas></section>
+          <section id="tab-sql" class="tab-pane hidden"><pre id="sqlText" class="text-sm"></pre></section>
+        </div>
+
+        {% include 'partials/insight_panel.html' %}
+
+        <footer class="chat-input-area">
+          <form id="chat-form" class="flex items-center gap-3">
+            <input type="text" id="user-input" class="chat-input" placeholder="Ask about your data..." required />
+            <button type="submit" id="send-button" class="send-btn">
+              <i data-feather="send" class="w-5 h-5"></i>
+            </button>
+          </form>
+        </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+    // --- All constants and DOM elements ---
+    const chatForm = document.getElementById("chat-form");
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendButton = document.getElementById("send-button");
+    // Optional DB status elements (may not exist in business mode)
+    const dbInfoDiv = document.getElementById('db-info') ? document.getElementById('db-info').querySelector('span') : null;
+    const dbInfoMini = document.getElementById('db-info-mini') || null;
+    let currentInference = 'gemini';
+    window.businessMode = false;
+    let autoSummarize = false;
+    const sendButtonOriginalContent = sendButton.innerHTML;
+    // ... and any other DOM elements you need ...
+    
+    // --- Threads API (server-backed) ---
+    async function apiListThreads(){ const r = await fetch('/api/threads'); return (await r.json()).threads || []; }
+    async function apiCreateThread(title){ const r = await fetch('/api/threads', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title })}); return await r.json(); }
+    async function apiGetThread(id){
+        const r = await fetch(`/api/threads/${id}`);
+        let data = {};
+        try { data = await r.json(); } catch(e){}
+        return { ok: r.ok, status: r.status, data };
+    }
+    async function apiRenameThread(id, title){ await fetch(`/api/threads/${id}/rename`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title })}); }
+    async function apiDeleteThread(id){ await fetch(`/api/threads/${id}`, { method:'DELETE' }); }
+    async function apiAddMessage(id, type, content){
+        const r = await fetch(`/api/threads/${id}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, content })});
+        if (r.status === 404) {
+            try {
+                const t = await apiCreateThread('New Chat');
+                const hidden = document.getElementById('current-thread-id'); if(hidden) hidden.value = t.id;
+                await fetch(`/api/threads/${t.id}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, content })});
+                const list = await apiListThreads(); renderThreadsList(list, t.id);
+            } catch(e) { if (window.AskUI?.toast) AskUI.toast.error('Could not create a new chat.'); }
+        }
+    }
+
+    function renderThreadsList(items, activeId){
+        const cont = document.getElementById('conversation-history-list'); if(!cont) return;
+        cont.innerHTML = '';
+        (items||[]).forEach(t=>{
+            const div=document.createElement('div'); div.className='history-item'+(t.id===activeId?' active':'');
+            div.innerHTML = `<span class="history-item-title">${t.title||'Chat'}</span><div class="flex items-center gap-1"><button class="delete-history-btn" data-act="rename" data-id="${t.id}" title="Rename"><i data-feather="edit-2"></i></button><button class="delete-history-btn" data-act="delete" data-id="${t.id}" title="Delete"><i data-feather="trash-2"></i></button></div>`;
+            div.addEventListener('click', async (e)=>{ if((e.target).closest('button')) return; await loadThread(t.id); });
+            cont.appendChild(div);
+        });
+        feather.replace();
+    }
+
+    async function loadThread(id){
+        const res = await apiGetThread(id);
+        if (!res.ok) {
+            if (res.status === 404) {
+                try {
+                    const t = await apiCreateThread('New Chat');
+                    const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = t.id;
+                    const list = await apiListThreads(); renderThreadsList(list, t.id);
+                    return;
+                } catch(e) { if (window.AskUI?.toast) AskUI.toast.info('Started a new chat.'); return; }
+            } else {
+                if (window.AskUI?.toast) AskUI.toast.error('Failed to load thread');
+                return;
+            }
+        }
+        const data = res.data || {};
+        const box = document.getElementById('chat-box'); box.innerHTML='';
+        (data.messages||[]).forEach(m=> appendMessageDOM({ type: m.type, content: m.content }, false));
+        const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = id;
+        const list = await apiListThreads(); renderThreadsList(list, id);
+    }
+
+    document.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button'); if(!btn) return;
+        if(btn.dataset.act==='rename'){
+            e.preventDefault();
+            const id = btn.dataset.id; const title = prompt('Rename chat to:');
+            if(title){ await apiRenameThread(id, title); const list = await apiListThreads(); const cur = document.getElementById('current-thread-id')?.value; renderThreadsList(list, cur); }
+        }
+        if(btn.dataset.act==='delete'){
+            e.preventDefault();
+            const id = btn.dataset.id; if(confirm('Delete this chat?')){ await apiDeleteThread(id); const list = await apiListThreads(); if(list.length){ await loadThread(list[0].id) } else { const t = await apiCreateThread('New Chat'); await loadThread(t.id) } }
+        }
+    });
+
+    // --- Main Logic using Fetch for Streaming ---
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+        const question = userInput.value.trim();
+        if (!question) return;
+        
+        // Add user message to UI and history
+        appendMessageDOM({ type: 'user', content: question });
+        try { const tid = document.getElementById('current-thread-id')?.value; if(tid) { await apiAddMessage(tid, 'user', question); } } catch(e){}
+        userInput.value = "";
+        
+        const botMessagePlaceholder = appendMessageDOM({ type: 'bot', content: {} }, true);
+        
+        sendButton.disabled = true;
+        sendButton.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+
+        const endpoint = currentInference === 'local' ? '/api/ask/stream' : '/api/gemini_ask/stream';
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ question })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || `HTTP error! Status: ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullSql = "";
+            let buffer = "";
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const events = buffer.split('\n\n');
+                buffer = events.pop();
+
+                for (const event of events) {
+                    if (event.startsWith('data: ')) {
+                        const jsonData = event.substring(6);
+                        if (!jsonData) continue;
+                        
+                        const parsed = JSON.parse(jsonData);
+                        const sqlToggle = botMessagePlaceholder.bubble.querySelector('.toggle-sql-button');
+                        const sqlBlock = botMessagePlaceholder.bubble.querySelector('.sql-code-block');
+                        const resultsContainer = botMessagePlaceholder.bubble.querySelector('.results-container');
+
+                        switch (parsed.type) {
+                            case 'token':
+                                fullSql += parsed.data.value;
+                                sqlBlock.textContent = fullSql + " █";
+                                break;
+                            case 'sql_complete':
+                                sqlBlock.textContent = parsed.data.query;
+                                if (!window.businessMode) { sqlToggle.classList.remove('hidden'); } else { sqlBlock.style.display='none'; }
+                                break;
+                            case 'result':
+                                const tableContainer = botMessagePlaceholder.bubble.querySelector('.results-table-container');
+                                tableContainer.innerHTML = '';
+                                tableContainer.appendChild(createHtmlTable(parsed.data.columns, parsed.data.data));
+                                resultsContainer.classList.remove('hidden');
+                                try { if (window.AskFeedback) { window.AskFeedback.attach(resultsContainer); } } catch(e){}
+                                try { const tid = document.getElementById('current-thread-id')?.value; if(tid) { await apiAddMessage(tid, 'bot', 'Result ready'); } } catch(e){}
+                                // Fill tabbed panes
+                                try {
+                                  const card = document.getElementById('result-tabs'); if(card) card.classList.remove('hidden');
+                                  const rc = document.getElementById('results-container'); if(rc){ rc.innerHTML=''; rc.appendChild(createHtmlTable(parsed.data.columns, parsed.data.data)); try { if (window.AskFeedback) { window.AskFeedback.attach(rc); } } catch(e){} }
+                                  const st = document.getElementById('sqlText'); if(st){ st.textContent = fullSql || parsed.data.sql || ''; }
+                                } catch(e){}
+                                // Save state for refresh
+                                try {
+                                  const tid = document.getElementById('current-thread-id')?.value; 
+                                  if(tid){ await fetch(`/api/threads/${tid}/state`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ columns: parsed.data.columns, rows: parsed.data.data, sql: fullSql, query: question }) }); }
+                                  localStorage.setItem('lastThreadId', tid||'');
+                                } catch(e){}
+                                // Business mode explainability and chart
+                                try {
+                                  if (window.AskUI && (window.businessMode || autoSummarize)){
+                                    const payload = { columns: parsed.data.columns||[], rows: parsed.data.data||[], query: question, sql: fullSql, signals: {} };
+                                    const ex = await AskUI.withRetry(()=> fetch('/api/insight/explain', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r=>r.json()));
+                                    AskUI.renderSummaryCard(ex);
+                                    AskUI.renderChart(payload.columns, payload.rows);
+                                    // Auto-switch to visuals
+                                    if (window.AskTabs) { window.AskTabs.activate('visuals'); }
+                                    // Store in memory for buttons
+                                    window._lastResult = { columns: payload.columns, rows: payload.rows, sql: fullSql, query: question, confidence: ex.confidence };
+                                }
+                                } catch(e){}
+                                break;
+                            case 'xp_saved':
+                                try { window._lastXpId = parseInt(parsed.data.xp_id); } catch(e){}
+                                break;
+                            case 'error': {
+                                const d = parsed.data || {};
+                                const parts = [];
+                                if (d.message) parts.push(d.message);
+                                if (d.status_code) parts.push(`Status: ${d.status_code}`);
+                                if (d.response_text) parts.push(`Response: ${d.response_text}`);
+                                if (d.attempted_urls && d.attempted_urls.length) {
+                                    parts.push('Tried:\n' + d.attempted_urls.join('\n'));
+                                }
+                                const msg = parts.join('\n\n');
+                                const errHtml = `<div class="alert alert-danger">
+                                    <div class="font-semibold mb-1">Error</div>
+                                    <pre style="white-space:pre-wrap">${msg}</pre>
+                                </div>`;
+                                botMessagePlaceholder.bubble.innerHTML = errHtml;
+                                feather.replace();
+                                return; // stop processing further stream
+                            }
+                        }
+                        chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Streaming failed:", error);
+            const { bubble } = appendMessageDOM({ type: 'bot-error', content: error.message });
+        } finally {
+            sendButton.disabled = false;
+            sendButton.innerHTML = sendButtonOriginalContent;
+            feather.replace();
+        }
+    }
+
+    // --- UI Rendering and Helpers (Simplified) ---
+    function appendMessageDOM(message, isPlaceholder = false) {
+        const cont = document.createElement("div");
+        cont.className = `chat-message ${message.type === 'user' ? 'user-message' : 'bot-message'}`;
+        if (message.type === 'bot-error') cont.classList.add('error');
+        
+        const bubble = document.createElement("div");
+        bubble.className = "message-bubble";
+        
+        if (message.type === 'user') {
+            bubble.textContent = message.content;
+        } else if (message.type === 'bot-error') {
+            bubble.innerHTML = `<p class="font-semibold">Error:</p><p>${message.content}</p>`;
+        } else { // 'bot' placeholder or final
+            // Show plain text when not a placeholder and content is provided
+            if (!isPlaceholder && typeof message.content === 'string' && message.content) {
+                bubble.textContent = message.content;
+            } else {
+                bubble.innerHTML = `
+                <button class="toggle-sql-button hidden"><i data-feather="code" class="w-4 h-4"></i> Show SQL</button>
+                <div class="sql-code-block" style="display: block;"></div>
+                <div class="results-container mt-6 hidden">
+                    <div class="results-header">Query Results:</div>
+                    <div class="results-table-container"></div>
+                </div>`;
+            const sqlToggle = bubble.querySelector('.toggle-sql-button');
+            const sqlBlock = bubble.querySelector('.sql-code-block');
+            sqlToggle.onclick = () => {
+                const isHidden = sqlBlock.style.display === "none";
+                sqlBlock.style.display = isHidden ? "block" : "none";
+                sqlToggle.innerHTML = `<i data-feather="${isHidden ? 'eye-off' : 'code'}"></i> ${isHidden ? 'Hide SQL' : 'Show SQL'}`;
+                feather.replace();
+            };
+            }
+        }
+        cont.appendChild(bubble);
+        chatBox.appendChild(cont);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        feather.replace();
+        return { container: cont, bubble: bubble };
+    }
+
+    function createHtmlTable(columns, data) {
+        const table = document.createElement("table");
+        table.className = "results-table";
+        const thead = table.createTHead();
+        const hr = thead.insertRow();
+        columns.forEach(col => { const th = document.createElement("th"); th.textContent = col; hr.appendChild(th); });
+        const tbody = table.createTBody();
+        if (data.length === 0) {
+            const r = tbody.insertRow();
+            const c = r.insertCell();
+            c.colSpan = columns.length;
+            c.className = 'no-data-message';
+            c.textContent = 'Query executed successfully but returned no data.';
+        } else {
+            data.forEach(rowData => {
+                const r = tbody.insertRow();
+                columns.forEach(col => {
+                    const c = r.insertCell();
+                    c.textContent = rowData[col] ?? "NULL";
+                });
+            });
+        }
+        return table;
+    }
+
+    // --- Initial Load ---
+    async function initializeApp() {
+        // This function should remain as provided in the last fix.
+        // It checks status, redirects if needed, and fetches DB info.
+        try {
+            const statusRes = await fetch('/api/status');
+            if (!statusRes.ok) throw new Error("Backend not reachable");
+            const status = await statusRes.json();
+            if (!status.database_configured || !status.faiss_index_loaded) {
+                window.location.href = '/settings';
+                return;
+            }
+        } catch (e) {
+            document.body.innerHTML = `<div style="padding: 2rem; text-align: center;"><h2>Error</h2><p>Could not connect to the backend server. Please ensure it's running and reload the page.</p></div>`;
+            return;
+        }
+
+        try {
+            const dbInfoRes = await fetch('/api/db_info');
+            const dbInfo = await dbInfoRes.json();
+            const txt = (dbInfo && dbInfo.database && dbInfo.database !== "Not Configured") ? `${dbInfo.database} @ ${dbInfo.server}` : 'DB Not Active';
+            if (dbInfoDiv) dbInfoDiv.textContent = txt;
+            if (dbInfoMini) dbInfoMini.textContent = txt;
+        } catch (e) {
+            if (dbInfoDiv) dbInfoDiv.textContent = 'DB Status Unknown';
+            if (dbInfoMini) dbInfoMini.textContent = 'DB Status Unknown';
+        }
+
+        // Load inference mode (model selection from settings)
+        try {
+            const label = document.getElementById('model-label') || null;
+            const r = await fetch('/api/settings/inference');
+            const j = await r.json();
+            currentInference = (j && j.inference) || 'gemini';
+            if (label) label.textContent = currentInference === 'local' ? 'Local Model' : 'Gemini 1.5 Flash';
+        } catch (e) {
+            currentInference = 'gemini';
+            const label = document.getElementById('model-label') || null;
+            if (label) label.textContent = 'Unknown';
+        }
+
+        // Load auto summarize flag
+        try {
+            const r = await fetch('/api/settings/auto_summarize');
+            const j = await r.json();
+            autoSummarize = !!(j && j.auto_summarize);
+        } catch (e) {}
+
+        // Apply saved UI mode (default business)
+        try {
+            const mode = (window.AskUI && AskUI.getMode && AskUI.getMode()) || 'biz';
+            window.businessMode = (mode === 'biz');
+            const dev = document.getElementById('mode-dev'); const biz = document.getElementById('mode-biz');
+            if (dev && biz){
+                if (window.businessMode){ biz.classList.add('bg-blue-50'); dev.classList.remove('bg-blue-50'); }
+                else { dev.classList.add('bg-blue-50'); biz.classList.remove('bg-blue-50'); }
+            }
+        } catch(e){}
+
+        // Ensure a thread exists and load it
+        let curId = null;
+        try{
+            const list = await apiListThreads();
+            if(list.length){ curId = list[0].id; }
+            else { const t = await apiCreateThread('New Chat'); curId = t.id; }
+            // hidden holder
+            let hidden = document.getElementById('current-thread-id');
+            if(!hidden){ hidden = document.createElement('input'); hidden.type='hidden'; hidden.id='current-thread-id'; document.body.appendChild(hidden); }
+            hidden.value = curId;
+            await loadThread(curId);
+        }catch(e){ console.warn('Threads not available', e); }
+
+        chatForm.addEventListener("submit", handleFormSubmit);
+
+        // New Session: clear chat area and start a fresh placeholder
+        const newBtn = document.getElementById('new-conversation-btn');
+        if (newBtn) {
+            newBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try{
+                    const t = await apiCreateThread('New Chat');
+                    const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = t.id;
+                    await loadThread(t.id);
+                } catch(err) {
+                    if (window.AskUI && AskUI.toast) { AskUI.toast.info('Chat session limit reached or unavailable.'); }
+                }
+            });
+        }
+
+        const btnDev = document.getElementById('mode-dev');
+        const btnBiz = document.getElementById('mode-biz');
+        if (btnDev && btnBiz) {
+            btnDev.addEventListener('click', (e)=>{ e.preventDefault(); window.businessMode = false; btnDev.classList.add('bg-blue-50'); btnBiz.classList.remove('bg-blue-50'); });
+            btnBiz.addEventListener('click', (e)=>{ e.preventDefault(); window.businessMode = true; btnBiz.classList.add('bg-blue-50'); btnDev.classList.remove('bg-blue-50'); });
+        }
+
+        // Metadata explorer minimal modal
+        ensureExplorerModal();
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (t && t.id === 'open-explorer') { e.preventDefault(); openExplorer(); }
+            if (t && t.id === 'meta-close') { e.preventDefault(); closeExplorer(); }
+            if (t && t.id === 'meta-search') { e.preventDefault(); doSearch(); }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeExplorer();
+            if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'meta-q') doSearch();
+        });
+    }
+    
+    initializeApp();
+
+    // ---- Metadata Explorer helpers ----
+    function ensureExplorerModal() {
+        if (document.getElementById('meta-modal')) return;
+        const html = `
+        <div id="meta-modal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-40">
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+              <div class="flex items-center justify-between px-4 py-2 border-b">
+                <div class="font-semibold">Metadata Explorer</div>
+                <button id="meta-close" class="px-2 py-1 text-sm border rounded">Close</button>
+              </div>
+              <div class="p-3 flex items-center gap-2 border-b">
+                <input id="meta-q" type="text" class="flex-1 border rounded px-2 py-1" placeholder="Search assets..." />
+                <button id="meta-search" class="px-3 py-1 bg-blue-600 text-white rounded">Search</button>
+              </div>
+              <div id="meta-results" class="p-3 overflow-auto text-sm"></div>
+            </div>
+          </div>
+        </div>`;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        document.body.appendChild(wrap.firstElementChild);
+    }
+    function openExplorer(){ const m = document.getElementById('meta-modal'); if (m) { m.classList.remove('hidden'); const q = document.getElementById('meta-q'); if (q) q.focus(); } }
+    function closeExplorer(){ const m = document.getElementById('meta-modal'); if (m) m.classList.add('hidden'); }
+    async function doSearch(){
+        const qEl = document.getElementById('meta-q');
+        const cont = document.getElementById('meta-results');
+        if (!cont) return;
+        const q = qEl ? (qEl.value || '').trim() : '';
+        cont.textContent = 'Searching...';
+        try {
+            const r = await fetch(`/api/metadata/assets?q=${encodeURIComponent(q)}&limit=50`);
+            const j = await r.json();
+            const items = (j && j.results) || [];
+            cont.innerHTML = items.length ? items.map(it => `
+              <div class='border-b py-2'>
+                <div class='font-medium'>${it.DisplayName || it.Key}</div>
+                <div class='text-gray-600 text-xs'>${it.Key}</div>
+                <div class='text-gray-700'>${it.Description || ''}</div>
+                <div class='text-xs text-gray-500'>Tags: ${(it.Tags||[]).join(', ')}</div>
+              </div>`).join('') : 'No results';
+        } catch(e) {
+            cont.textContent = 'Search failed';
+        }
+    }
+    // Learning health footer
+    (async function(){
+      try{
+        const r = await fetch('/api/learn/health');
+        const j = await r.json();
+        const foot = document.createElement('div');
+        foot.className = 'text-xs text-gray-500 px-4 py-1';
+        if (j && !j.error){
+          const pct = Math.round((j.accuracy||0)*100);
+          const last = j.last_updated || '';
+          foot.textContent = `Learning Memory: ${j.examples} examples | ${pct}% accuracy | Last updated: ${last}`;
+        } else { foot.textContent = 'Learning status unavailable'; }
+        document.body.appendChild(foot);
+      }catch(e){}
+    })();
+  </script>
+</body>
+</html>
+
+
+
+

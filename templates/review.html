@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback Review - AskLytics</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="p-4">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <a href="/" class="text-sm text-blue-600 hover:underline">&larr; Back to Chat</a>
+        <h1 class="text-2xl font-semibold">Feedback Review</h1>
+      </div>
+      <a href="/dashboard" class="text-sm text-blue-600 hover:underline">Dashboard</a>
+    </div>
+
+    <div id="msg" class="text-sm text-gray-600 mb-2"></div>
+    <div class="overflow-auto border rounded">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b bg-gray-50">
+            <th class="px-2 py-1 text-left">Prompt</th>
+            <th class="px-2 py-1 text-left">Generated SQL</th>
+            <th class="px-2 py-1 text-left">Corrected SQL</th>
+            <th class="px-2 py-1">Score</th>
+            <th class="px-2 py-1">Action</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    feather.replace();
+    const rows = document.getElementById('rows');
+    const msg = document.getElementById('msg');
+
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+    async function loadPending(){
+      rows.innerHTML = '<tr><td class="px-2 py-2" colspan="5">Loading...</td></tr>';
+      try{
+        const r = await fetch('/api/review/pending'); const j = await r.json();
+        const list = j.results || [];
+        if(!list.length){ rows.innerHTML = '<tr><td class="px-2 py-2" colspan="5">No pending feedback.</td></tr>'; return; }
+        rows.innerHTML = list.map(it=> `
+          <tr class="border-b align-top">
+            <td class="px-2 py-2">${escapeHtml(it.prompt || it.user_prompt)}</td>
+            <td class="px-2 py-2"><pre class="whitespace-pre-wrap">${escapeHtml(it.generated_sql || '')}</pre></td>
+            <td class="px-2 py-2"><pre class="whitespace-pre-wrap">${escapeHtml(it.corrected_sql || it.validated_sql || '')}</pre></td>
+            <td class="px-2 py-2 text-center">${it.score != null ? it.score : ''}</td>
+            <td class="px-2 py-2 text-center">
+              <button data-act="approve" data-id="${it.id || it.rowid}" class="px-2 py-1 bg-green-600 text-white rounded">Approve</button>
+              <button data-act="reject" data-id="${it.id || it.rowid}" class="px-2 py-1 bg-red-600 text-white rounded ml-2">Reject</button>
+            </td>
+          </tr>`).join('');
+      }catch(e){ rows.innerHTML = '<tr><td class="px-2 py-2" colspan="5">Failed to load.</td></tr>'; }
+    }
+
+    document.addEventListener('click', async (e)=>{
+      const t = e.target; if(!t || !t.dataset) return;
+      if(t.dataset.act === 'approve' || t.dataset.act === 'reject'){
+        const id = t.dataset.id; const url = t.dataset.act === 'approve' ? '/api/review/approve' : '/api/review/reject';
+        try{
+          const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+          const j = await r.json(); if(j.status === 'ok'){ msg.textContent = 'Updated.'; loadPending(); } else { msg.textContent = j.error || 'Failed.'; }
+        }catch(e){ msg.textContent = 'Failed.'; }
+      }
+    });
+
+    loadPending();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,48 @@
+{
+  "db": {
+    "driver": "ODBC Driver 17 for SQL Server",
+    "server": "prod-sqlfci",
+    "database": "CustomAppsD365",
+    "uid": "sa",
+    "pwd": "ecs@123",
+    "timeout": 10,
+    "configured": true,
+    "dialect": "SQL Server"
+  },
+  "selection": {
+    "tables": [
+      "[dbo].[ECS_CLAIMCLEARANCEOFFER]",
+      "[dbo].[ECS_CLAIMCUSTMSGLOG]",
+      "[dbo].[ECS_CLAIMDATAAREAID]",
+      "[dbo].[ECS_CLAIMDEFECT]",
+      "[dbo].[ECS_CLAIMDEFECTTYPE]",
+      "[dbo].[ECS_CLAIMIMAGES]",
+      "[dbo].[ECS_CLAIMINITIATE]",
+      "[dbo].[ECS_CLAIMINITIATETYPE]",
+      "[dbo].[ECS_CLAIMINVENTTABLE]",
+      "[dbo].[ECS_CLAIMITEM]",
+      "[dbo].[ECS_CLAIMITEMDIMENSION]",
+      "[dbo].[ECS_CLAIMLASTRECEIVEDQTY]",
+      "[dbo].[ECS_CLAIMMESSAGESETTING]",
+      "[dbo].[ECS_CLAIMPERCENTAGE]",
+      "[dbo].[ECS_CLAIMREPAIRMAN]",
+      "[dbo].[ECS_CLAIMREPAIRTARGET]",
+      "[dbo].[ECS_CLAIMREPAIRTYPE]",
+      "[dbo].[ECS_CLAIMSALEINFO]",
+      "[dbo].[ECS_CLAIMSTATUS]",
+      "[dbo].[ECS_CLAIMSTORE]",
+      "[dbo].[ECS_CLAIMTABLE]",
+      "[dbo].[ECS_CLAIMTABLEHISTORY]",
+      "[dbo].[ECS_CLAIMTRANSDEFECT]",
+      "[dbo].[ECS_CLAIMTTYPE]",
+      "[dbo].[ECS_CLAIMVENDOR]"
+    ]
+  },
+  "app": {
+    "env": "development",
+    "inference": "gemini",
+    "auto_log_learning": true,
+    "auto_summarize": true,
+    "chat_session_limit": 4
+  }
+}

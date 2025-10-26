@@ -1,0 +1,170 @@
+[
+  {
+    "id": "be0bbea33d3747239597a2216e3257ad",
+    "title": "New Chat",
+    "messages": [
+      {
+        "type": "user",
+        "content": "hi"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "show me customers who face problems again and again"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      }
+    ],
+    "updated_at": 1761391526.1635551
+  },
+  {
+    "id": "427414d5d7c64588b574cad2b8bb410b",
+    "user_id": "3dbbce98c4494ae6bbe88ef9def15b99",
+    "title": "New Chat",
+    "messages": [
+      {
+        "type": "user",
+        "content": "analyze the ration of claims and repair for last 3 years"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ration of claims(claimtype=claim) and repair(claimtype=repair) for last 3 years"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ration of claims and repair for last 3 years"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ration of claims and repair for last 3 years"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      },
+      {
+        "type": "user",
+        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      }
+    ],
+    "updated_at": 1761457514.9693139,
+    "state": {
+      "columns": [
+        "ClaimYear",
+        "REPAIRTYPE",
+        "ClaimCount"
+      ],
+      "rows": [
+        {
+          "ClaimYear": 2022,
+          "REPAIRTYPE": "Repair",
+          "ClaimCount": 1
+        },
+        {
+          "ClaimYear": 2023,
+          "REPAIRTYPE": null,
+          "ClaimCount": 4
+        },
+        {
+          "ClaimYear": 2023,
+          "REPAIRTYPE": "Claim",
+          "ClaimCount": 782
+        },
+        {
+          "ClaimYear": 2023,
+          "REPAIRTYPE": "Repair",
+          "ClaimCount": 669
+        },
+        {
+          "ClaimYear": 2024,
+          "REPAIRTYPE": null,
+          "ClaimCount": 18
+        },
+        {
+          "ClaimYear": 2024,
+          "REPAIRTYPE": "Claim",
+          "ClaimCount": 669
+        },
+        {
+          "ClaimYear": 2024,
+          "REPAIRTYPE": "Repair",
+          "ClaimCount": 1710
+        },
+        {
+          "ClaimYear": 2025,
+          "REPAIRTYPE": null,
+          "ClaimCount": 135
+        },
+        {
+          "ClaimYear": 2025,
+          "REPAIRTYPE": "Claim",
+          "ClaimCount": 1487
+        },
+        {
+          "ClaimYear": 2025,
+          "REPAIRTYPE": "Repair",
+          "ClaimCount": 2320
+        }
+      ],
+      "sql": "```sql\nSELECT\n    YEAR([TRANSDATE]) AS ClaimYear,\n    [REPAIRTYPE],\n    COUNT(*) AS ClaimCount\nFROM\n    [dbo].[ECS_CLAIMTABLE]\nWHERE\n    [TRANSDATE] >= DATEADD(year, -3, GETDATE())\nGROUP BY\n    YEAR([TRANSDATE]),\n    [REPAIRTYPE]\nORDER BY\n    ClaimYear,\n    [REPAIRTYPE];\n```",
+      "query": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+    }
+  }
+]
