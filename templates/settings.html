@@ -895,6 +895,15 @@
                                     </button>
                                     <div id="reports-status" class="text-xs mt-2"></div>
                                 </div>
+                                
+                                <div class="border rounded-lg p-4 bg-red-50">
+                                    <h4 class="font-medium text-sm mb-2 text-red-700">Clean/Reset All Data</h4>
+                                    <p class="text-xs text-red-600 mb-3">⚠️ Clear FAISS index, schema cache, and learning data. Use when switching data sources.</p>
+                                    <button class="btn btn-danger btn-sm" id="manual-clean">
+                                        <i data-feather="trash-2" class="w-3 h-3"></i> Clean All Data
+                                    </button>
+                                    <div id="clean-status" class="text-xs mt-2"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1058,6 +1067,13 @@
             document.getElementById('manual-reports').addEventListener('click', async () => {
                 await executeTask('manual-reports', 'reports-status', 'Generate Reports', '/api/reports/generate', 'POST');
             });
+            
+            // Clean/Reset All Data
+            document.getElementById('manual-clean').addEventListener('click', async () => {
+                if (confirm('⚠️ WARNING: This will delete all FAISS indexes, schema cache, and learning data.\n\nThis action cannot be undone!\n\nAre you sure you want to continue?')) {
+                    await executeTask('manual-clean', 'clean-status', 'Clean All Data', '/api/system/clean', 'POST');
+                }
+            });
         }
         
         async function executeTask(buttonId, statusId, taskName, endpoint, method) {
@@ -1157,6 +1173,18 @@
                 const learningResponse = await fetch('/api/settings/learning');
                 const learningData = await learningResponse.json();
                 document.getElementById('autoLogLearning').checked = learningData.auto_log_learning || false;
+                
+                // Load governance settings
+                try {
+                    const govResponse = await fetch('/api/settings/governance');
+                    const govData = await govResponse.json();
+                    document.getElementById('piiMasking').checked = govData.pii_masking !== false;
+                    document.getElementById('auditLogging').checked = govData.audit_logging !== false;
+                    document.getElementById('dataRetention').value = govData.data_retention || 90;
+                    console.log('Governance settings loaded:', govData);
+                } catch (e) {
+                    console.warn('Governance settings loading failed:', e);
+                }
                 
                 // Load database info
                 const dbResponse = await fetch('/api/settings/db/current');
@@ -1344,23 +1372,29 @@
             feather.replace();
             
             try {
+                const payload = {
+                    pii_masking: document.getElementById('piiMasking').checked,
+                    audit_logging: document.getElementById('auditLogging').checked,
+                    data_retention: parseInt(document.getElementById('dataRetention').value)
+                };
+                
+                console.log('Saving governance settings:', payload);
+                
                 const response = await fetch('/api/settings/governance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        pii_masking: document.getElementById('piiMasking').checked,
-                        audit_logging: document.getElementById('auditLogging').checked,
-                        data_retention: parseInt(document.getElementById('dataRetention').value)
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
-                if (response.ok) {
+                const result = await response.json();
+                console.log('Governance save response:', result);
+                
+                if (response.ok && result.status === 'success') {
                     statusEl.className = 'text-sm text-green-600';
-                    statusEl.textContent = '✓ Settings saved successfully!';
-                    // Keep the values - they're already set in the UI
+                    statusEl.textContent = '✓ ' + (result.message || 'Settings saved successfully!');
                 } else {
                     statusEl.className = 'text-sm text-red-600';
-                    statusEl.textContent = '✗ Failed to save settings';
+                    statusEl.textContent = '✗ ' + (result.message || result.error || 'Failed to save settings');
                 }
             } catch (error) {
                 statusEl.className = 'text-sm text-red-600';
@@ -1412,11 +1446,13 @@
             
             try {
                 const connectionData = {
-                    host: document.getElementById('dbHost').value,
+                    server: document.getElementById('dbHost').value,
                     database: document.getElementById('dbName').value,
-                    port: document.getElementById('dbPort').value,
-                    username: document.getElementById('dbUsername').value,
-                    password: document.getElementById('dbPassword').value
+                    port: parseInt(document.getElementById('dbPort').value) || 1433,
+                    uid: document.getElementById('dbUsername').value,
+                    pwd: document.getElementById('dbPassword').value,
+                    driver: 'ODBC Driver 17 for SQL Server',
+                    timeout: 5
                 };
                 
                 const response = await fetch('/api/settings/db/test', {
@@ -1427,12 +1463,12 @@
                 
                 const result = await response.json();
                 
-                if (response.ok && result.success) {
+                if (response.ok && result.status === 'success') {
                     statusEl.className = 'text-sm text-green-600';
-                    statusEl.textContent = '✓ Connection successful!';
+                    statusEl.textContent = '✓ ' + (result.message || 'Connection successful!');
                 } else {
                     statusEl.className = 'text-sm text-red-600';
-                    statusEl.textContent = `✗ Connection failed: ${result.error || 'Unknown error'}`;
+                    statusEl.textContent = `✗ ${result.message || result.error || 'Connection failed'}`;
                 }
             } catch (error) {
                 statusEl.className = 'text-sm text-red-600';
@@ -1456,11 +1492,13 @@
             
             try {
                 const connectionData = {
-                    host: document.getElementById('dbHost').value,
+                    server: document.getElementById('dbHost').value,
                     database: document.getElementById('dbName').value,
-                    port: document.getElementById('dbPort').value,
-                    username: document.getElementById('dbUsername').value,
-                    password: document.getElementById('dbPassword').value
+                    port: parseInt(document.getElementById('dbPort').value) || 1433,
+                    uid: document.getElementById('dbUsername').value,
+                    pwd: document.getElementById('dbPassword').value,
+                    driver: 'ODBC Driver 17 for SQL Server',
+                    timeout: 15
                 };
                 
                 const response = await fetch('/api/settings/db/save', {
@@ -1473,10 +1511,10 @@
                 
                 if (response.ok) {
                     statusEl.className = 'text-sm text-green-600';
-                    statusEl.textContent = '✓ Connection saved successfully!';
+                    statusEl.textContent = '✓ ' + (result.message || 'Connection saved successfully!');
                 } else {
                     statusEl.className = 'text-sm text-red-600';
-                    statusEl.textContent = `✗ Save failed: ${result.error || 'Unknown error'}`;
+                    statusEl.textContent = `✗ ${result.message || result.error || 'Unknown error'}`;
                 }
             } catch (error) {
                 statusEl.className = 'text-sm text-red-600';

@@ -1,0 +1,33 @@
+name: gross_revenue
+entity: order_items
+grain: [day, store]
+description: Sum of extended price before returns and discounts
+sql: |
+  SELECT
+    DATE(o.order_date) AS day,
+    o.store_id,
+    SUM(oi.quantity * oi.unit_price) AS gross_revenue
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.order_date BETWEEN :start_date AND :end_date
+    AND o.status != 'cancelled'
+    {{AND_FILTERS}}
+  GROUP BY DATE(o.order_date), o.store_id
+filters:
+  store: "o.store_id = :store"
+  product: "oi.product_id = :product"
+  category: "oi.product_id IN (SELECT product_id FROM products WHERE category = :category)"
+lineage:
+  - { table: "orders", column: "order_date" }
+  - { table: "orders", column: "store_id" }
+  - { table: "order_items", column: "quantity" }
+  - { table: "order_items", column: "unit_price" }
+examples:
+  - "What was our gross revenue last month?"
+  - "Show me daily revenue by store"
+  - "Total sales for electronics category"
+tags:
+  - revenue
+  - financial
+
+

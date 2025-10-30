@@ -1,0 +1,14 @@
+name: order_items_orders
+from:
+  model: order_items
+  column: order_id
+to:
+  model: orders
+  column: order_id
+type: MANY_TO_ONE
+condition: "order_items.order_id = orders.order_id"
+description: "Each order item belongs to one order; orders can have many items"
+tags:
+  - transactional
+
+

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Modeling - AskLytics</title>
+    <link rel="stylesheet" href="/static/css/asklytics.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.9;
+        }
+
+        .nav {
+            background: white;
+            padding: 0.75rem 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 1.5rem;
+            font-weight: 500;
+        }
+
+        .nav a:hover {
+            text-decoration: underline;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            height: calc(100vh - 180px);
+        }
+
+        .erd-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            overflow: auto;
+        }
+
+        .relationships-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #2d3748;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .btn-danger {
+            background: #fc8181;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f56565;
+        }
+
+        .entity-card {
+            background: #f7fafc;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+            min-width: 250px;
+            margin-right: 1rem;
+            vertical-align: top;
+        }
+
+        .entity-header {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #667eea;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #cbd5e0;
+        }
+
+        .entity-column {
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .entity-column .col-name {
+            font-weight: 500;
+        }
+
+        .entity-column .col-type {
+            color: #718096;
+            font-size: 0.85rem;
+        }
+
+        .entity-column.primary {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .entity-column.pii {
+            color: #fc8181;
+        }
+
+        .relationship-card {
+            background: #f7fafc;
+            border-left: 4px solid #48bb78;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .relationship-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .relationship-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .relationship-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: #48bb78;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .relationship-details {
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-top: 0.5rem;
+        }
+
+        .relationship-arrow {
+            color: #667eea;
+            font-weight: bold;
+            margin: 0 0.5rem;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .menu-btn:hover {
+            color: #4a5568;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 Semantic Modeling</h1>
+        <p>Define business entities, metrics, and relationships for your data model</p>
+    </div>
+
+    <div class="nav">
+        <a href="/">← Back to Chat</a>
+        <a href="/dashboard/governance">Governance</a>
+        <a href="/settings">Settings</a>
+    </div>
+
+    <div class="container">
+        <!-- ERD Panel -->
+        <div class="erd-panel">
+            <div class="panel-header">
+                <h2>Entity Relationship Diagram</h2>
+                <button class="btn btn-secondary" onclick="refreshERD()">🔄 Refresh</button>
+            </div>
+            <div id="erd-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading entities...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relationships Panel -->
+        <div class="relationships-panel">
+            <div class="panel-header">
+                <h2>Relationships</h2>
+                <button class="btn btn-primary" onclick="openCreateRelationshipModal()">+ Relationship</button>
+            </div>
+            <div id="relationships-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading relationships...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Relationship Modal -->
+    <div id="relationshipModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="modalTitle">Create Relationship</div>
+            
+            <form id="relationshipForm">
+                <div class="form-group">
+                    <label class="form-label">Relationship Name</label>
+                    <input type="text" id="relationshipName" class="form-input" placeholder="e.g., orders_customers" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">From Model</label>
+                    <select id="fromModel" class="form-select" onchange="updateFromColumns()" required>
+                        <option value="">Select model...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">From Column</label>
+                    <select id="fromColumn" class="form-select" required>
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">To Model</label>
+                    <select id="toModel" class="form-select" onchange="updateToColumns()" required>
+                        <option value="">Select model...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">To Column</label>
+                    <select id="toColumn" class="form-select" required>
+                        <option value="">Select column...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Relationship Type</label>
+                    <select id="relationType" class="form-select" required>
+                        <option value="">Select type...</option>
+                        <option value="ONE_TO_ONE">ONE_TO_ONE</option>
+                        <option value="ONE_TO_MANY">ONE_TO_MANY</option>
+                        <option value="MANY_TO_ONE">MANY_TO_ONE</option>
+                        <option value="MANY_TO_MANY">MANY_TO_MANY</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description (Optional)</label>
+                    <input type="text" id="relationshipDescription" class="form-input" placeholder="Describe this relationship...">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeRelationshipModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Relationship</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/modeling.js"></script>
+</body>
+</html>
+
+

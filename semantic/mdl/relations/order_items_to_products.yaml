@@ -1,0 +1,14 @@
+name: order_items_products
+from:
+  model: order_items
+  column: product_id
+to:
+  model: products
+  column: product_id
+type: MANY_TO_ONE
+condition: "order_items.product_id = products.product_id"
+description: "Each order item references one product; products can appear in many items"
+tags:
+  - transactional
+
+

@@ -683,6 +683,10 @@
                 </div>
                 
                 <div class="nav-links">
+                    <a href="/modeling" class="nav-link">
+                        <i data-feather="git-branch" class="w-4 h-4"></i>
+                        Modeling
+                    </a>
                     <a href="/settings" class="nav-link">
                         <i data-feather="settings" class="w-4 h-4"></i>
                         Settings
@@ -1163,6 +1167,17 @@
                                 const event = JSON.parse(line.slice(6));
                                 
                                 switch(event.type) {
+                                    case 'semantic_match':
+                                        // Show semantic match notification
+                                        assistantMessage = `✨ Using pre-compiled metric: ${event.data.metric}`;
+                                        updateMessage(loadingId, assistantMessage, 'assistant');
+                                        tempResultData.semantic_context = {
+                                            metric: event.data.metric,
+                                            description: event.data.description,
+                                            score: event.data.score
+                                        };
+                                        break;
+                                    
                                     case 'sql_complete':
                                         tempResultData.sql = event.data.query;
                                         assistantMessage = 'Query generated. Executing...';

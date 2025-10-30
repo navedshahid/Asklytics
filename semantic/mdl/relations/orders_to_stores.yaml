@@ -1,0 +1,14 @@
+name: orders_stores
+from:
+  model: orders
+  column: store_id
+to:
+  model: stores
+  column: store_id
+type: MANY_TO_ONE
+condition: "orders.store_id = stores.store_id"
+description: "Each order is placed at one store; stores can have many orders"
+tags:
+  - transactional
+
+

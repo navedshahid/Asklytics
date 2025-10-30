@@ -1,0 +1,20 @@
+name: region_based_access
+type: row_filter
+description: Filter data by user's assigned region
+targets:
+  - entity: orders
+    condition: "orders.store_id IN (SELECT store_id FROM stores WHERE region = :user_region)"
+  - entity: stores
+    condition: "stores.region = :user_region"
+roles_exempt:
+  - admin
+  - auditor
+parameters:
+  user_region:
+    source: user_context
+    description: "User's assigned region from role/profile"
+tags:
+  - rbac
+  - regional
+
+

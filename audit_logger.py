@@ -47,8 +47,8 @@ def _db_path(root: Path) -> Path:
 def _ensure_db(root: Path) -> None:
     p = _db_path(root)
     p.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(p))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(p)) as con:
         cur = con.cursor()
         cur.execute(
             """
@@ -65,15 +65,13 @@ def _ensure_db(root: Path) -> None:
             """
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def _ensure_validation_table(root: Path) -> None:
     p = _db_path(root)
     p.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(p))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(p)) as con:
         cur = con.cursor()
         cur.execute(
             """
@@ -88,15 +86,13 @@ def _ensure_validation_table(root: Path) -> None:
             """
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def _ensure_events_table(root: Path | None) -> None:
     p = _db_path(root or Path('.'))
     p.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(str(p))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(p)) as con:
         cur = con.cursor()
         cur.execute(
             """
@@ -112,8 +108,6 @@ def _ensure_events_table(root: Path | None) -> None:
             """
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def _hash(text: Optional[str]) -> str:
@@ -151,8 +145,8 @@ def log_interaction(root: Path, provider: str, prompt: str, sql: str, feedback: 
     p_hash = _hash(_scrub(prompt))
     s_hash = _hash(_scrub(sql))
     estimate = estimate_token_cost(prompt)
-    con = sqlite3.connect(str(_db_path(root)))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(_db_path(root))) as con:
         cur = con.cursor()
         cur.execute(
             "INSERT INTO audit_log (ts_utc, provider, prompt_hash, sql_hash, feedback, exec_time_ms, token_cost_estimate) VALUES (?,?,?,?,?,?,?)",
@@ -167,8 +161,6 @@ def log_interaction(root: Path, provider: str, prompt: str, sql: str, feedback: 
             ),
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def log_validation_summary(root: Path, *, score: float, label: str, semantic_conf: float) -> None:
@@ -177,16 +169,14 @@ def log_validation_summary(root: Path, *, score: float, label: str, semantic_con
     ISO 27001: stores only anonymized summary fields.
     """
     _ensure_validation_table(root)
-    con = sqlite3.connect(str(_db_path(root)))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(_db_path(root))) as con:
         cur = con.cursor()
         cur.execute(
             "INSERT INTO audit_validation (ts_utc, action, score, label, semantic_conf) VALUES (?,?,?,?,?)",
             (datetime.utcnow().isoformat(), "validation_complete", float(score), str(label or ""), float(semantic_conf or 0.0)),
         )
         con.commit()
-    finally:
-        con.close()
 
 
 def export_last_30_days_csv(root: Path, out_file: Path) -> Path:
@@ -194,16 +184,14 @@ def export_last_30_days_csv(root: Path, out_file: Path) -> Path:
     _ensure_db(root)
     since = datetime.utcnow() - timedelta(days=30)
     rows: Iterable[tuple]
-    con = sqlite3.connect(str(_db_path(root)))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(_db_path(root))) as con:
         cur = con.cursor()
         cur.execute(
             "SELECT ts_utc, provider, prompt_hash, sql_hash, feedback, exec_time_ms, token_cost_estimate FROM audit_log WHERE ts_utc >= ? ORDER BY ts_utc DESC",
             (since.isoformat(),),
         )
         rows = cur.fetchall()
-    finally:
-        con.close()
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w", newline="", encoding="utf-8") as f:
@@ -225,8 +213,8 @@ def export_last_30_days_csv(root: Path, out_file: Path) -> Path:
 def log_event(root: Path | None, *, user_id: str, action: str, resource: str = "", masked: bool = True, meta: dict | None = None) -> None:
     """Generic masked audit event (e.g., feedback_submit)."""
     _ensure_events_table(root)
-    con = sqlite3.connect(str(_db_path(root or Path('.'))))
-    try:
+    # Use context manager to ensure connection is always closed
+    with sqlite3.connect(str(_db_path(root or Path('.')))) as con:
         cur = con.cursor()
         user_hash = _hash(user_id) if masked else user_id
         cur.execute(
@@ -234,5 +222,3 @@ def log_event(root: Path | None, *, user_id: str, action: str, resource: str = "
             (datetime.utcnow().isoformat(), user_hash, action, resource or "", 1 if masked else 0, _scrub(str(meta or {}))),
         )
         con.commit()
-    finally:
-        con.close()

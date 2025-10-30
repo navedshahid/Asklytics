@@ -2,18 +2,20 @@
   "db": {
     "driver": "ODBC Driver 17 for SQL Server",
     "server": "prod-sqlfci",
-    "database": "CustomAppsD365",
+    "database": "RetailHREvaluations",
     "uid": "sa",
     "pwd": "ecs@123",
-    "timeout": 10,
+    "timeout": 15,
     "configured": true,
-    "dialect": "SQL Server"
+    "dialect": "SQL Server",
+    "port": 1433
   },
   "selection": {
     "tables": [
-      "[dbo].[ECS_CLAIMINITIATE]",
-      "[dbo].[ECS_CLAIMINITIATETYPE]",
-      "[dbo].[ECS_CLAIMINVENTTABLE]"
+      "[dbo].[BM_Evaluation]",
+      "[dbo].[FM_Evaluation]",
+      "[dbo].[Gallery_Evaluation]",
+      "[dbo].[SalesTeam_Evaluation]"
     ]
   },
   "app": {
@@ -22,10 +24,10 @@
     "auto_log_learning": true,
     "auto_summarize": true,
     "chat_session_limit": 4,
-    "temperature": 0.7,
+    "temperature": 1.0,
     "learning_rate": 0.3,
     "pii_masking": false,
-    "audit_logging": true,
+    "audit_logging": false,
     "data_retention": 90
   }
 }

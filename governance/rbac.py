@@ -18,10 +18,14 @@ def _split_roles(raw: str | None) -> Set[str]:
 
 
 def resolve_roles(request: Request) -> Set[str]:
-    """Resolve roles from headers/cookies/query params.
+    """Resolve roles from headers/cookies only.
 
     The project primarily uses ``X-Role`` but we support ``X-Roles`` (CSV) and
     a ``role`` cookie for completeness.
+    
+    SECURITY: Query parameters are NOT accepted for role assignment as they
+    can be easily manipulated by end users. Roles must come from authenticated
+    sources (headers set by auth middleware or secure cookies).
     """
 
     roles: Set[str] = set()
@@ -31,8 +35,9 @@ def resolve_roles(request: Request) -> Set[str]:
         roles |= _split_roles(request.cookies.get("role"))
     except Exception:
         pass
-    # Optional query param override (useful for automated tests)
-    roles |= _split_roles(request.args.get("role"))
+    # REMOVED: Query param role injection vulnerability
+    # Query params should NEVER be used for authorization as they can be
+    # manipulated by attackers to escalate privileges
     return roles
 
 

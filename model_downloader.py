@@ -6,12 +6,12 @@ from huggingface_hub import snapshot_download
 MODEL_REPO = "defog/sqlcoder-7b-2"
 MODEL_DIR = "models/sqlcoder-7b-2"
 GGUF_OUTPUT_DIR = "models"
-GGUF_NAME = "sqlcoder-7b-2.q8_0.gguf"  # ✅ Fixed output name
-CONVERT_SCRIPT = "E:/Official/GenDS/llama.cpp/convert_hf_to_gguf.py"
+GGUF_NAME = "sqlcoder-7b-2.q8_0.gguf"  #  Fixed output name
+CONVERT_SCRIPT = "E:/personal/asklytics/llama.cpp/convert_hf_to_gguf.py"
 
 CONVERT_ARGS = [
     "--outfile", GGUF_NAME,
-    "--outtype", "q8_0",  # ✅ Fixed outtype
+    "--outtype", "q8_0",  #  Fixed outtype
     "--output_dir", GGUF_OUTPUT_DIR
 ]
 
@@ -27,18 +27,18 @@ for file in os.listdir(MODEL_DIR):
         break
 
 if not model_file:
-    raise FileNotFoundError("❌ Could not find a model checkpoint (.safetensors or .bin)")
+    raise FileNotFoundError(" Could not find a model checkpoint (.safetensors or .bin)")
 
-print(f"✅ Found model file: {model_file}")
+print(f" Found model file: {model_file}")
 
 # === STEP 3: Convert model to GGUF ===
 os.makedirs(GGUF_OUTPUT_DIR, exist_ok=True)
 print("⚙️ Converting to GGUF format...")
 
 cmd = [
-    "E:/Official/GenDS/.venv/Scripts/python.exe",
+    "E:/personal/asklytics/.venv/Scripts/python.exe",
     CONVERT_SCRIPT,
-    MODEL_DIR,  # ✅ Positional model path, not --model_path
+    MODEL_DIR,  #  Positional model path, not --model_path
     "--outfile", GGUF_NAME,
     "--outtype", "q8_0"
 ]
@@ -48,4 +48,4 @@ print("🔧 Running command:\n", " ".join(cmd))
 env = os.environ.copy()
 env["PYTHONPATH"] = os.path.join(os.getcwd(), "llama.cpp")
 subprocess.run(cmd, env=env, check=True)
-print(f"✅ GGUF model saved to: {os.path.join(GGUF_OUTPUT_DIR, GGUF_NAME)}")
+print(f" GGUF model saved to: {os.path.join(GGUF_OUTPUT_DIR, GGUF_NAME)}")

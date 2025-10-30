@@ -1,0 +1,20 @@
+name: stores
+grain: store_id
+description: Physical store locations
+reference:
+  table: stores
+columns:
+  - { name: store_id, dtype: integer, primary: true, description: "Store primary key" }
+  - { name: store_name, dtype: string, description: "Store name" }
+  - { name: city, dtype: string, description: "Store city" }
+  - { name: state, dtype: string, description: "Store state" }
+  - { name: region, dtype: string, description: "Store region (North, South, East, West)" }
+  - { name: manager_name, dtype: string, description: "Store manager name" }
+  - { name: opened_date, dtype: date, description: "Store opening date" }
+properties:
+  default_time_col: opened_date
+tags:
+  - master_data
+  - location
+
+

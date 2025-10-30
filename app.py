@@ -47,6 +47,7 @@ from governance import (
     can_view_pii,
     set_audit_root,
 )
+from semantic_routes import init_semantic_routes
 from metrics import compute_summary as metrics_compute_summary, persist_regression_result
 try:
     from roi import metrics_service as roi_metrics
@@ -1032,14 +1033,36 @@ def test_db_connection():
     except Exception as e: return jsonify({"status": "error", "message": f"Connection test failed: {e}"})
 @app.route("/api/settings/db/save", methods=["POST"])
 def save_db_connection():
-    details = request.get_json(force=True) or {}; required = ["server", "database", "uid", "pwd"]; missing = [k for k in required if not details.get(k)]
-    if missing: return jsonify({"status": "error", "message": f"Missing fields: {', '.join(missing)}"}), 400
-    config.update_db_config(details)
-    def _init_pool_async():
-        global connection_pool
-        try: connection_pool = ConnectionPool(size=5); logger.info("DB pool initialized (async)")
-        except Exception as e: logger.error(f"Pool init failed: {e}", exc_info=True)
-    Thread(target=_init_pool_async, daemon=True).start(); return jsonify({"status": "success", "message": f"Configuration saved. Pool starting"}), 200
+    try:
+        details = request.get_json(force=True) or {}
+        logger.info(f"DB save request: server={details.get('server')}, db={details.get('database')}")
+        
+        required = ["server", "database", "uid", "pwd"]
+        missing = [k for k in required if not details.get(k)]
+        if missing:
+            logger.warning(f"DB save failed - missing fields: {missing}")
+            return jsonify({"status": "error", "message": f"Missing fields: {', '.join(missing)}"}), 400
+        
+        # Add driver and timeout defaults
+        details.setdefault("driver", "ODBC Driver 17 for SQL Server")
+        details.setdefault("timeout", 15)
+        
+        config.update_db_config(details)
+        logger.info("DB config saved successfully")
+        
+        def _init_pool_async():
+            global connection_pool
+            try:
+                connection_pool = ConnectionPool(size=5)
+                logger.info("DB pool initialized (async)")
+            except Exception as e:
+                logger.error(f"Pool init failed: {e}", exc_info=True)
+        
+        Thread(target=_init_pool_async, daemon=True).start()
+        return jsonify({"status": "success", "message": "Configuration saved. Pool starting"}), 200
+    except Exception as e:
+        logger.error(f"DB save error: {type(e).__name__}: {str(e)}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Save failed: {type(e).__name__}"}), 500
 
 # --- Table selection APIs ---
 @app.route("/api/settings/tables/list", methods=["GET"])
@@ -1249,11 +1272,47 @@ def ask_stream():
             elif last and intent in (Intent.REFINE_FILTER, Intent.REFINE_ADD_COLUMN, Intent.COMPARE):
                 refined_sql = refine_sql(last.get("sql"), intent, payload)
             if not force_sql and not refined_sql:
-                k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
-                q_emb = np.array(embedder.encode([question])["dense_vecs"], dtype="float32")
-                # q_emb = embedder.encode([question], convert_to_numpy=True).astype("float32")
-                _, I = faiss_index.search(q_emb, k); context = "\n---\n".join(knowledge_strings[i] for i in I[0]);
-                combined_context = meta.meta_pre_prompt(question, context, k=5) if meta else context
+                # Try semantic layer first
+                semantic_sql = None
+                semantic_context = ""
+                try:
+                    from semantic_routes import semantic_engine
+                    if semantic_engine:
+                        # Search semantic layer for matching metrics/entities
+                        search_results = semantic_engine.search(question, k=3)
+                        if search_results and search_results[0].get("score", 0) > 0.7:
+                            top_hit = search_results[0]
+                            # If top hit is a metric with high score, try to compile it
+                            if top_hit["type"] == "metric":
+                                logger.info(f"Semantic match found: {top_hit['name']} (score: {top_hit['score']})")
+                                # Extract time range and filters from question if possible
+                                compile_result = semantic_engine.compile(
+                                    target=top_hit["name"],
+                                    filters={},
+                                    time_range={},
+                                    user_roles=list(roles),
+                                    limit=1000
+                                )
+                                if compile_result.get("status") == "success":
+                                    semantic_sql = compile_result.get("sql")
+                                    semantic_context = f"Using pre-compiled metric: {top_hit['name']}\nLineage: {compile_result.get('lineage')}"
+                                    yield stream_event("semantic_match", {
+                                        "metric": top_hit["name"],
+                                        "description": top_hit.get("description", ""),
+                                        "score": top_hit["score"]
+                                    })
+                except Exception as e:
+                    logger.warning(f"Semantic layer search failed: {e}")
+                
+                # If no semantic match, use standard FAISS retrieval
+                if not semantic_sql:
+                    k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
+                    q_emb = np.array(embedder.encode([question])["dense_vecs"], dtype="float32")
+                    # q_emb = embedder.encode([question], convert_to_numpy=True).astype("float32")
+                    _, I = faiss_index.search(q_emb, k); context = "\n---\n".join(knowledge_strings[i] for i in I[0]);
+                    combined_context = meta.meta_pre_prompt(question, context, k=5) if meta else context
+                else:
+                    combined_context = semantic_context
 
             base_prompt = (
                 "You are an expert T-SQL (Microsoft SQL Server) query generator.\n"
@@ -1305,7 +1364,9 @@ def ask_stream():
                 clean_sql = enforce_tsql(force_sql, dialect="tsql", mode="translate").rstrip(";")
             elif refined_sql:
                 clean_sql = enforce_tsql(refined_sql, dialect="tsql", mode="translate").rstrip(";")
-            if not force_sql and not refined_sql and not clean_sql:
+            elif semantic_sql:
+                clean_sql = enforce_tsql(semantic_sql, dialect="tsql", mode="translate").rstrip(";")
+            if not force_sql and not refined_sql and not semantic_sql and not clean_sql:
                 raise ValueError(violation or "Generated SQL was not valid T-SQL.")
             # Track final SQL for error reporting
             full_sql = clean_sql
@@ -2065,10 +2126,11 @@ def api_feedback_summary():
 
 @app.get("/api/feedback/list")
 def api_feedback_list():
-    # Require header X-Role: auditor
-    role = request.headers.get("X-Role") or ""
-    if role.lower() != "auditor":
-        return jsonify({"error": "forbidden"}), 403
+    # Require auditor role using centralized role resolution
+    roles = resolve_roles(request)
+    # Auditor role is required to view feedback list
+    if "auditor" not in roles and "admin" not in roles:
+        return jsonify({"error": "forbidden", "message": "Auditor or admin role required"}), 403
     if fb_dao is None:
         return jsonify({"results": []})
     try:
@@ -2172,6 +2234,21 @@ def dashboard_page():
             return "Dashboard template missing.", 404
         logger.error("/dashboard render failed: %s", e, exc_info=True)
         return "Dashboard render error. See server logs.", 500
+
+@app.get("/modeling")
+def modeling_page():
+    """Render the semantic modeling page."""
+    try:
+        return render_template("modeling.html")
+    except Exception as e:
+        try:
+            from jinja2 import TemplateNotFound
+        except Exception:
+            TemplateNotFound = type("_TNF", (), {})
+        if isinstance(e, TemplateNotFound):
+            return "Modeling template missing.", 404
+        logger.error("/modeling render failed: %s", e, exc_info=True)
+        return "Modeling render error. See server logs.", 500
 
 @app.get("/api/metrics/summary")
 def metrics_summary():
@@ -2377,6 +2454,8 @@ def get_governance_settings():
 def set_governance_settings():
     try:
         payload = request.get_json(force=True) or {}
+        logger.info(f"Governance save request: {payload}")
+        
         updates = {}
         
         if "pii_masking" in payload:
@@ -2388,10 +2467,14 @@ def set_governance_settings():
         
         if updates:
             config.save_app_config(updates)
-        return jsonify({"status": "success"})
+            logger.info(f"Governance settings saved: {updates}")
+        else:
+            logger.warning("No governance updates to save")
+        
+        return jsonify({"status": "success", "message": "Governance settings saved successfully"})
     except Exception as e:
-        logger.error("Failed to save governance settings: %s", e, exc_info=True)
-        return jsonify({"status": "error", "message": "Failed to save governance settings."}), 500
+        logger.error(f"Failed to save governance settings: {type(e).__name__}: {str(e)}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Failed to save: {type(e).__name__}"}), 500
 
 @app.post("/api/learn/reindex")
 def api_learn_reindex():
@@ -2412,6 +2495,76 @@ def api_learn_reindex():
         return jsonify({"status": "accepted", "message": "Learning index rebuild started."}), 202
     except Exception as e:
         return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
+
+@app.post("/api/system/clean")
+def api_system_clean():
+    """Clean/reset all data: FAISS indexes, schema cache, and learning data."""
+    try:
+        import os
+        
+        logger.warning("System clean initiated - this will delete all FAISS indexes and cached data")
+        
+        files_to_delete = [
+            # Schema FAISS index
+            "schema.index",
+            "schema_strings.npy",
+            # Learning FAISS index
+            "asklytics_learning_engine/data/faiss_index.faiss",
+            "asklytics_learning_engine/data/meta.json",
+            # Metadata cache
+            "data/schema.json",
+            # Learning store database
+            "learning_store.db",
+            # Metadata database
+            "metadata.db",
+            "metadata.db-shm",
+            "metadata.db-wal",
+        ]
+        
+        deleted = []
+        errors = []
+        
+        for file_path in files_to_delete:
+            try:
+                full_path = APP_ROOT / file_path
+                if full_path.exists():
+                    if full_path.is_file():
+                        full_path.unlink()
+                        deleted.append(file_path)
+                        logger.info(f"Deleted: {file_path}")
+                    else:
+                        logger.warning(f"Skipped (not a file): {file_path}")
+                else:
+                    logger.info(f"Not found (skipped): {file_path}")
+            except Exception as e:
+                error_msg = f"{file_path}: {str(e)}"
+                errors.append(error_msg)
+                logger.error(f"Failed to delete {file_path}: {e}")
+        
+        # Reset global variables
+        global faiss_index, knowledge_strings, meta
+        faiss_index = None
+        knowledge_strings = None
+        meta = None
+        
+        message = f"Cleaned {len(deleted)} files."
+        if errors:
+            message += f" {len(errors)} errors occurred."
+        
+        logger.warning(f"System clean completed: {len(deleted)} files deleted, {len(errors)} errors")
+        
+        return jsonify({
+            "status": "success",
+            "message": message,
+            "deleted": deleted,
+            "errors": errors
+        }), 200
+    except Exception as e:
+        logger.error(f"System clean error: {type(e).__name__}: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": f"Clean failed: {type(e).__name__}"
+        }), 500
 
 # Aliased regression route for dashboard contract
 @app.post("/api/regression/run")
@@ -2878,6 +3031,22 @@ def _bootstrap_app() -> None:
             learn_eval = None
             learn_reindex = None
         
+        # Initialize semantic layer
+        try:
+            def _embed_texts(texts):
+                """Wrapper for embedding function."""
+                if embedder is None:
+                    return None
+                try:
+                    return embedder.encode(texts, batch_size=32)['dense_vecs']
+                except Exception:
+                    return None
+            
+            init_semantic_routes(app, embedder_fn=_embed_texts)
+            logger.info("Semantic layer initialized successfully")
+        except Exception as exc:
+            logger.error("Semantic layer initialization failed: %s", exc, exc_info=True)
+        
         BOOTSTRAPPED = True
 
 
@@ -2895,6 +3064,26 @@ if __name__ == "__main__":
         logger.info(f"Starting PRODUCTION server on http://{host}:{port}")
         serve(app, host=host, port=port, threads=16)
     else:
-        logger.info(f"Starting DEVELOPMENT server on http://{host}:{port} (debug=False)")
-        # Disable debug mode to avoid Windows console errors
-        app.run(host=host, port=port, debug=False, use_reloader=False)
+        logger.info(f"Starting DEVELOPMENT server on http://{host}:{port} (debug=True)")
+        
+        # Log all registered routes in development
+        logger.info("=" * 60)
+        logger.info("Registered Routes:")
+        semantic_routes = []
+        other_routes = []
+        for rule in app.url_map.iter_rules():
+            if 'semantic' in rule.rule or 'modeling' in rule.rule:
+                semantic_routes.append(f"  {rule.methods} {rule.rule}")
+            elif not rule.rule.startswith('/static'):
+                other_routes.append(f"  {rule.methods} {rule.rule}")
+        
+        if semantic_routes:
+            logger.info("Semantic & Modeling Routes:")
+            for route in sorted(semantic_routes)[:10]:
+                logger.info(route)
+        
+        logger.info(f"Total routes: {len(list(app.url_map.iter_rules()))}")
+        logger.info("=" * 60)
+        
+        # Enable debug mode for auto-reload and better error messages
+        app.run(host=host, port=port, debug=True, use_reloader=True)
