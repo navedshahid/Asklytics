@@ -23,13 +23,17 @@
     "updated_at": 1761391526.1635551
   },
   {
-    "id": "427414d5d7c64588b574cad2b8bb410b",
+    "id": "bd12f708cb5c4543bc05b7723c5791f8",
     "user_id": "3dbbce98c4494ae6bbe88ef9def15b99",
     "title": "New Chat",
     "messages": [
       {
         "type": "user",
-        "content": "analyze the ration of claims and repair for last 3 years"
+        "content": "show me top 10 defects with claims or repairs in year 2024"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 defects with claims or repairs in year 2024"
       },
       {
         "type": "bot",
@@ -37,7 +41,7 @@
       },
       {
         "type": "user",
-        "content": "analyze the ration of claims(claimtype=claim) and repair(claimtype=repair) for last 3 years"
+        "content": "show me top 10 products in relationship to defects for may 2025"
       },
       {
         "type": "bot",
@@ -45,7 +49,7 @@
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years"
+        "content": "analyze the ratio for claims & repairs in claim type for year 2025"
       },
       {
         "type": "bot",
@@ -53,7 +57,11 @@
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 10 defects with products in year 2024"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 defects with claims or repairs in year 2024"
       },
       {
         "type": "bot",
@@ -61,7 +69,7 @@
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 10 products in relationship to defects for jan 2025"
       },
       {
         "type": "bot",
@@ -69,11 +77,15 @@
       },
       {
         "type": "user",
-        "content": "analyze the ration of claims and repair for last 3 years"
+        "content": "show me top 10 defects in feb 2025 in relation to claims & repairs"
       },
       {
         "type": "user",
-        "content": "analyze the ration of claims and repair for last 3 years"
+        "content": "show me top 10 customers with top 10 defects"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 customers with top 10 defects"
       },
       {
         "type": "bot",
@@ -81,7 +93,23 @@
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 10 customers with top 10 defects"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 customers with top 10 defects month wise for year 2024"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 customers with top 10 defects month wise for year 2024"
+      },
+      {
+        "type": "user",
+        "content": "show me top 10 customers with top 10 defects month wise for year 2024"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
       },
       {
         "type": "bot",
@@ -89,82 +117,93 @@
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 12 stores contributing to claims or repair"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 12 stores contributing to claims or repair for year 2025"
+      },
+      {
+        "type": "bot",
+        "content": "Result ready"
       },
       {
         "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "content": "show me top 10 defects in 2025"
       },
       {
-        "type": "user",
-        "content": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+        "type": "bot",
+        "content": "Result ready"
       }
     ],
-    "updated_at": 1761457514.9693139,
+    "updated_at": 1761689399.6776555,
     "state": {
       "columns": [
-        "ClaimYear",
-        "REPAIRTYPE",
-        "ClaimCount"
+        "DEFECT"
       ],
       "rows": [
         {
-          "ClaimYear": 2022,
-          "REPAIRTYPE": "Repair",
-          "ClaimCount": 1
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2023,
-          "REPAIRTYPE": null,
-          "ClaimCount": 4
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2023,
-          "REPAIRTYPE": "Claim",
-          "ClaimCount": 782
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2023,
-          "REPAIRTYPE": "Repair",
-          "ClaimCount": 669
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2024,
-          "REPAIRTYPE": null,
-          "ClaimCount": 18
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2024,
-          "REPAIRTYPE": "Claim",
-          "ClaimCount": 669
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2024,
-          "REPAIRTYPE": "Repair",
-          "ClaimCount": 1710
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2025,
-          "REPAIRTYPE": null,
-          "ClaimCount": 135
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2025,
-          "REPAIRTYPE": "Claim",
-          "ClaimCount": 1487
+          "DEFECT": ""
         },
         {
-          "ClaimYear": 2025,
-          "REPAIRTYPE": "Repair",
-          "ClaimCount": 2320
+          "DEFECT": ""
         }
       ],
-      "sql": "```sql\nSELECT\n    YEAR([TRANSDATE]) AS ClaimYear,\n    [REPAIRTYPE],\n    COUNT(*) AS ClaimCount\nFROM\n    [dbo].[ECS_CLAIMTABLE]\nWHERE\n    [TRANSDATE] >= DATEADD(year, -3, GETDATE())\nGROUP BY\n    YEAR([TRANSDATE]),\n    [REPAIRTYPE]\nORDER BY\n    ClaimYear,\n    [REPAIRTYPE];\n```",
-      "query": "analyze the ratio of claims type claim and repair for last 3 years and visualize separately"
+      "sql": "```sql\nSELECT TOP (10)\n  [DEFECT]\nFROM [dbo].[ECS_CLAIMTABLE]\nWHERE\n  YEAR([TRANSDATE]) = 2025\nORDER BY\n  [DEFECT];\n```",
+      "query": "show me top 10 defects in 2025",
+      "signals": {},
+      "feedback_status": "idle",
+      "summary": "Result has 10 rows and 1 columns.",
+      "summary_bullets": [],
+      "provenance": "Insight comes from dbo].[ECS_CLAIMTABLE.",
+      "confidence_label": "Low"
     }
+  },
+  {
+    "id": "110eb7a1721542deaf62fc08ebf2b7c3",
+    "user_id": "3dbbce98c4494ae6bbe88ef9def15b99",
+    "title": "New Chat",
+    "messages": [],
+    "updated_at": 1761556032.2090003
+  },
+  {
+    "id": "bbbcf679e04e459e82fe1bf1374a105d",
+    "user_id": "3dbbce98c4494ae6bbe88ef9def15b99",
+    "title": "New Chat",
+    "messages": [
+      {
+        "type": "user",
+        "content": "hi"
+      }
+    ],
+    "updated_at": 1761579040.1884823
   }
 ]

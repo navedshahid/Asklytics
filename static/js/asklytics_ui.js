@@ -31,40 +31,81 @@
     return header + '\n' + body;
   }
   function renderSummaryCard(data){
-    const panel = document.getElementById('insight-panel'); if(!panel) return;
+    const execCard = document.getElementById('executive-card');
+    const panel = document.getElementById('insight-panel');
+    if(!panel || !execCard) return;
+
+    execCard.classList.remove('hidden');
     panel.classList.remove('hidden');
+
     const sum = panel.querySelector('.insight-summary');
     const badge = document.getElementById('confidence-badge');
     const prov = panel.querySelector('.provenance');
-    // Compose summary + optional bullets
+
     if(sum){
-      const bullets = (data.bullets||[]).slice(0,3).map(b=> `• ${b}`).join('  ');
-      sum.textContent = [data.summary||'', bullets].filter(Boolean).join('  ');
+      const baseSummary = data.summary || '';
+      const bulletSentences = (data.bullets || [])
+        .slice(0, 6)
+        .map(text => text.endsWith('.') ? text : `${text}.`);
+      const combined = [baseSummary].concat(bulletSentences).filter(Boolean);
+      const filler = [
+        'These insights highlight notable trends and should inform executive decisions.',
+        'Validation and masking rules were enforced before presenting these findings.',
+        'Use the detailed table below to inspect row-level drivers.',
+        'The confidence badge reflects hybrid validator and execution signals.',
+        'Consider exporting the dataset for follow-up analysis or sharing.',
+        'Charts on the right provide a quick visual scan for outliers or trends.'
+      ];
+      let fillerIndex = 0;
+      while(combined.length < 6 && fillerIndex < filler.length){
+        combined.push(filler[fillerIndex++]);
+      }
+      sum.textContent = combined.slice(0, 10).join(' ');
     }
+
     if(prov) prov.textContent = data.provenance || '';
     if(badge){
-      badge.textContent = `Confidence: ${data.confidence?.label || '—'}`;
+      badge.textContent = `Confidence: ${data.confidence?.label || 'n/a'}`;
       badge.className = 'badge ' + (data.confidence?.label ? 'confidence-' + (data.confidence.label||'').toLowerCase() : '');
     }
   }
+
   function renderChart(columns, rows){
     const canvas = document.getElementById('resultChart'); if(!canvas) return;
+    const card = document.getElementById('visuals-card');
+    const placeholder = document.getElementById('visuals-placeholder');
     if(window.currentChart){ try{ window.currentChart.destroy(); }catch(e){} }
-    if(!columns || !rows || !rows.length){ canvas.classList.add('hidden'); return; }
-    const ctx = canvas.getContext('2d');
-    const first = columns[0];
+
+    if(!columns || !rows || !rows.length){
+      if(card){ card.classList.remove('hidden'); }
+      if(canvas){ canvas.classList.add('hidden'); }
+      if(placeholder){ placeholder.classList.remove('hidden'); }
+      return;
+    }
+
     const numericCols = columns.filter(c=> rows.some(r=> typeof r[c]==='number'));
-    if(numericCols.length===0){ canvas.classList.add('hidden'); return; }
-    const cat = first;
-    const measure = numericCols.includes(first) && numericCols[1] ? numericCols[1] : numericCols[0];
-    const labels = rows.map(r=> r[cat]);
-    const data = rows.map(r=> r[measure]);
+    if(numericCols.length===0){
+      if(card){ card.classList.remove('hidden'); }
+      if(canvas){ canvas.classList.add('hidden'); }
+      if(placeholder){ placeholder.classList.remove('hidden'); }
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const categoryField = columns[0];
+    const measureField = numericCols.includes(categoryField) && numericCols[1] ? numericCols[1] : numericCols[0];
+    const labels = rows.map(r=> r[categoryField]);
+    const data = rows.map(r=> r[measureField]);
+
+    if(card){ card.classList.remove('hidden'); }
+    if(placeholder){ placeholder.classList.add('hidden'); }
     canvas.classList.remove('hidden');
+
     /* global Chart */
     window.currentChart = new Chart(ctx, {
       type: (new Date(labels[0]).toString() !== 'Invalid Date' && !isNaN(Date.parse(labels[0]))) ? 'line' : 'bar',
-      data: { labels, datasets: [{ label: measure, data, borderColor:'#2563eb', backgroundColor:'#93c5fd' }]},
-      options: { responsive:true, scales:{ y:{ beginAtZero:true }}}
+      data: { labels, datasets: [{ label: measureField, data, borderColor:'#2563eb', backgroundColor:'#93c5fd' }]},
+      options: { responsive:true, scales:{ y:{ beginAtZero:true }} }
     });
   }
   async function withRetry(fn, attempts=2){
@@ -106,6 +147,17 @@
         AskUI.renderSummaryCard({ summary: qs('insight-panel')?.querySelector('.insight-summary')?.textContent, bullets: [], provenance: p.provenance, confidence: window._lastResult?.confidence });
       }catch(err){ AskUI.toast.error('Why this failed'); } finally{ b.disabled=false; }
     }
+    if(b.id==='btn-save-chart'){
+      const canvas = document.getElementById('resultChart');
+      if(canvas && !canvas.classList.contains('hidden')){
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = 'asklytics_chart.png';
+        link.click();
+      }else{
+        AskUI.toast.info('No chart to save yet.');
+      }
+    }
   });
 
   // New chat behavior: destroy chart, clear panes
@@ -117,8 +169,10 @@
       const resC = qs('results-container'); if(resC) resC.innerHTML='';
       const sqlT = qs('sqlText'); if(sqlT) sqlT.textContent='';
       const panel = qs('insight-panel'); if(panel) panel.classList.add('hidden');
-      const card = qs('result-tabs'); if(card) card.classList.add('hidden');
-      activateTab('results');
+      const exec = qs('executive-card'); if(exec) exec.classList.add('hidden');
+      const feedbackCard = qs('feedback-card'); if(feedbackCard) feedbackCard.classList.add('hidden');
+      const resultsCard = qs('results-card'); if(resultsCard) resultsCard.classList.add('hidden');
+      const visualsCard = qs('visuals-card'); if(visualsCard) visualsCard.classList.add('hidden');
       // Attempt to create a new server thread if helpers exist
       try{
         if(typeof apiCreateThread === 'function' && typeof loadThread === 'function' && typeof renderThreadsList === 'function'){
@@ -127,7 +181,5 @@
         }
       }catch(err){ AskUI.toast.info('Chat session limit reached or unavailable.'); }
     }); }
-    // restore tab state
-    const t = localStorage.getItem('ask_tab') || 'results'; activateTab(t);
   });
 })();

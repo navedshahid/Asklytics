@@ -30,8 +30,8 @@ class ValidationResult:
 
 
 def _has_forbidden(sql: str) -> Optional[str]:
-    if re.search(r"(?i)\bDROP\b|\bDELETE\b", sql):
-        return "Forbidden keyword (DROP/DELETE) detected"
+    if re.search(r"(?i)\b(DROP|DELETE|TRUNCATE|ALTER)\b", sql):
+        return "Forbidden keyword (DROP/DELETE/TRUNCATE/ALTER) detected"
     return None
 
 
@@ -76,11 +76,56 @@ def _columns_match_schema(sql: str, schema_json: Optional[Dict[str, Any]]) -> Op
 
 
 def _repair_with_llm(sql: str) -> Optional[str]:
+    """Try to repair SQL using local SQLCoder-7B as reviewer."""
     try:
+        # First try local SQLCoder-7B for repair
+        repaired_sql = _repair_with_sqlcoder(sql)
+        if repaired_sql:
+            return repaired_sql
+        
+        # Fallback to Gemini if available
         from gemini_wrapper import repair_sql  # type: ignore
         return repair_sql(sql)
     except Exception:
         return None
+
+def _repair_with_sqlcoder(sql: str) -> Optional[str]:
+    """Use local SQLCoder-7B to review and repair SQL."""
+    try:
+        # Import your existing SQLCoder setup
+        import sys
+        import os
+        sys.path.append(os.path.dirname(__file__))
+        
+        # Check if SQLCoder is available
+        from app import llm  # Your existing SQLCoder setup
+        
+        if not llm:
+            return None
+            
+        # Create a repair prompt for SQLCoder
+        repair_prompt = f"""You are an expert SQL reviewer. The following SQL has issues. Please provide a corrected version that follows T-SQL syntax.
+
+Original SQL:
+{sql}
+
+Please provide only the corrected SQL statement, no explanations:"""
+
+        # Use your existing LLM to generate repair
+        result = llm(repair_prompt, max_tokens=512, temperature=0.1, stop=["###", "\n\n\n"], stream=False)
+        repaired = result.get("choices", [{}])[0].get("text", "").strip()
+        
+        # Clean up the response
+        repaired = repaired.replace("```sql", "").replace("```", "").strip()
+        
+        # Basic validation - if it looks like SQL, return it
+        if repaired and repaired.upper().startswith("SELECT"):
+            return repaired
+            
+    except Exception as e:
+        print(f"SQLCoder repair failed: {e}")
+        
+    return None
 
 
 def run(sql: str, schema_json: Optional[Dict[str, Any]] = None) -> ValidationResult:

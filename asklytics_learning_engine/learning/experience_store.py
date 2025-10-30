@@ -192,3 +192,66 @@ def fetch_similar_examples(prompt: str, k: int = 3) -> List[Experience]:
         scored.append((overlap, xp))
     scored.sort(key=lambda x: x[0], reverse=True)
     return [xp for _, xp in scored[:k]]
+
+
+def count_experiences() -> int:
+    """Count total number of experiences in the store."""
+    with _conn() as con:
+        result = con.execute("SELECT COUNT(*) FROM xp").fetchone()
+        return result[0] if result else 0
+
+
+def validate_experiences() -> int:
+    """Validate experience store integrity and return count of valid experiences."""
+    with _conn() as con:
+        # Check for experiences with valid data
+        result = con.execute("""
+            SELECT COUNT(*) FROM xp 
+            WHERE user_prompt IS NOT NULL 
+            AND user_prompt != ''
+            AND (generated_sql IS NOT NULL OR validated_sql IS NOT NULL)
+        """).fetchone()
+        return result[0] if result else 0
+
+
+def cleanup_old_data(days: int = 90) -> int:
+    """Clean up old experiences older than specified days."""
+    with _conn() as con:
+        result = con.execute("""
+            DELETE FROM xp 
+            WHERE timestamp < datetime('now', '-{} days')
+        """.format(days))
+        return result.rowcount
+
+
+def clear_experiences() -> int:
+    """Clear all experiences from the store."""
+    with _conn() as con:
+        result = con.execute("DELETE FROM xp")
+        return result.rowcount
+
+
+def get_metrics_summary() -> dict:
+    """Get summary metrics for the experience store."""
+    with _conn() as con:
+        # Total experiences
+        total = con.execute("SELECT COUNT(*) FROM xp").fetchone()[0]
+        
+        # Successful experiences
+        successful = con.execute("SELECT COUNT(*) FROM xp WHERE success = 1").fetchone()[0]
+        
+        # Average score
+        avg_score = con.execute("SELECT AVG(score) FROM xp WHERE score IS NOT NULL").fetchone()[0]
+        avg_score = avg_score if avg_score is not None else 0.0
+        
+        # Average confidence
+        avg_confidence = con.execute("SELECT AVG(confidence_score) FROM xp WHERE confidence_score IS NOT NULL").fetchone()[0]
+        avg_confidence = avg_confidence if avg_confidence is not None else 0.0
+        
+        return {
+            "total_experiences": total,
+            "successful_experiences": successful,
+            "success_rate": successful / total if total > 0 else 0.0,
+            "average_score": avg_score,
+            "average_confidence": avg_confidence
+        }

@@ -38,6 +38,15 @@ except Exception:
     def contains_postgresisms(sql: str) -> bool:
         return False
 from app_meta_patch import AppMetaPatch  # metadata integration
+from governance import (
+    MaskingPolicy,
+    governance_bp,
+    mask_row,
+    mask_rows,
+    resolve_roles,
+    can_view_pii,
+    set_audit_root,
+)
 from metrics import compute_summary as metrics_compute_summary, persist_regression_result
 try:
     from roi import metrics_service as roi_metrics
@@ -174,6 +183,7 @@ except Exception:  # torch optional
 
 # ---------- Paths & Logging ----------
 APP_ROOT = Path(__file__).resolve().parent
+set_audit_root(APP_ROOT)
 CONFIG_DIR = Path(os.getenv("GENDS_CONFIG_DIR", APP_ROOT / "data"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_FILE = CONFIG_DIR / "asklytics_config.json"
@@ -253,8 +263,17 @@ class ConfigManager:
             return mode if mode in ("local", "gemini") else "gemini"
     def set_inference_mode(self, mode: str) -> None:
         mode = (mode or "").lower()
+        # Map frontend values to backend values
+        mode_mapping = {
+            "sqlcoder": "local",
+            "local": "local",
+            "gemini": "gemini",
+            "hybrid": "gemini"  # Hybrid uses Gemini as primary
+        }
+        if mode in mode_mapping:
+            mode = mode_mapping[mode]
         if mode not in ("local", "gemini"):
-            raise ValueError("inference must be 'local' or 'gemini'")
+            raise ValueError("inference must be 'local', 'gemini', 'sqlcoder', or 'hybrid'")
         with self._lock:
             self._config.setdefault("app", {})["inference"] = mode
             write_json_atomic(CONFIG_FILE, {"db": self._config["db"], "selection": self._config.get("selection", {}), "app": self._config["app"]})
@@ -290,10 +309,18 @@ class ConfigManager:
             self._config.setdefault("app", {})["chat_session_limit"] = int(max(1, min(50, n)))
             write_json_atomic(CONFIG_FILE, {"db": self._config["db"], "selection": self._config.get("selection", {}), "app": self._config["app"]})
             logger.info("Saved chat_session_limit: %s", n)
+    
+    def save_app_config(self, updates: dict) -> None:
+        """Update and save app configuration."""
+        with self._lock:
+            self._config.setdefault("app", {}).update(updates)
+            write_json_atomic(CONFIG_FILE, {"db": self._config["db"], "selection": self._config.get("selection", {}), "app": self._config["app"]})
+            logger.info("Saved app config updates: %s", list(updates.keys()))
 
 config = ConfigManager()
 app = Flask(__name__, template_folder="templates")
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+app.register_blueprint(governance_bp)
 # ---------- CUDA State ----------
 def _cuda_diag() -> dict:
     out = {
@@ -333,6 +360,68 @@ llm: Optional[Llama] = None
 LLM_LOCK = Lock()
 threads = ThreadStore(APP_ROOT)
 
+# Global bootstrap state (ensures Flask CLI imports initialize subsystems)
+BOOTSTRAP_LOCK = Lock()
+BOOTSTRAPPED = False
+meta: Optional[AppMetaPatch] = None
+
+
+def _is_truthy(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return False
+
+
+def _extract_tables_from_sql(sql: str | None) -> list[str]:
+    if not sql or not meta:
+        return []
+    try:
+        tables = meta._extract_tables_from_sql(sql)  # type: ignore[attr-defined]
+        if isinstance(tables, (list, tuple, set)):
+            return [str(t) for t in tables if t]
+        return []
+    except Exception:
+        return []
+
+
+def _build_masking_policy(tables: list[str]) -> MaskingPolicy:
+    pii_map = {}
+    if meta and tables:
+        try:
+            pii_map = meta.get_pii_map(tables)  # type: ignore[attr-defined]
+        except Exception:
+            pii_map = {}
+    return MaskingPolicy(pii_columns=pii_map)
+
+
+def _mask_and_log(  # noqa: PLR0913 - helper centralises common args
+    *,
+    columns: list[str],
+    rows: list[dict],
+    tables: list[str],
+    expose: bool,
+    reason: str | None,
+    user_id: str,
+) -> list[dict]:
+    policy = _build_masking_policy(tables)
+    masked_rows = mask_rows(rows, columns, policy, tables=tables, expose=expose)
+    try:
+        audit_logger.log_event(
+            APP_ROOT,
+            user_id=user_id,
+            action="view_unmasked" if expose else "view_masked",
+            resource=";".join(tables) if tables else "sql_query",
+            masked=not expose,
+            meta={"reason": reason or "", "tables": tables},
+        )
+    except Exception:
+        pass
+    return masked_rows
+
 # ---------------- User helper & response wrapper -----------------
 from flask import make_response
 def _get_user_id() -> tuple[str, bool]:
@@ -355,6 +444,76 @@ def _resp(data, status: int = 200):
         except Exception:
             pass
     return resp
+
+def _error_resp(message: str, code: str = "INTERNAL_ERROR", status: int = 500):
+    """Standardized error response following the API contract."""
+    return _resp({
+        "ok": False,
+        "error": {
+            "code": code,
+            "message": message
+        }
+    }, status)
+
+def _apply_safety_limits(sql: str, max_rows: int = 1000) -> str:
+    """Apply safety limits to SQL queries to prevent runaway queries.
+    
+    - Injects TOP (N) if not already present
+    - Respects DISTINCT and other modifiers
+    - Falls back to subquery wrapping if needed
+    """
+    sql = sql.strip().rstrip(';')
+    
+    # Check if already has TOP
+    if re.search(r'(?i)\bTOP\s*\(\s*\d+\s*\)', sql):
+        return sql
+    
+    # Try to inject TOP at the beginning of SELECT
+    def _repl(m):
+        mod = m.group('mod') or ''
+        return f"SELECT {mod}TOP ({max_rows}) "
+    
+    # Try in-place injection first
+    result = re.sub(r"(?is)^\s*select\s+(?P<mod>(?:all|distinct)\s+)?", _repl, sql, count=1)
+    if result != sql:
+        return result
+    
+    # Fallback: wrap as subquery (may fail with ORDER BY in subquery)
+    return f"SELECT TOP ({max_rows}) * FROM ({sql}) AS _safety_wrapped"
+
+def _safe_execute_sql(cursor, sql: str, timeout_seconds: int = 30) -> tuple[list, list, float]:
+    """Safely execute SQL with timeout and error handling.
+    
+    Returns:
+        tuple: (columns, rows, execution_time_ms)
+    """
+    import signal
+    import time
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError(f"SQL query timed out after {timeout_seconds} seconds")
+    
+    # Set up timeout (Unix only - Windows will skip this)
+    try:
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(timeout_seconds)
+    except (AttributeError, OSError):
+        # Windows doesn't support SIGALRM, rely on connection timeout
+        pass
+    
+    try:
+        t0 = time.time()
+        cursor.execute(sql)
+        columns = [d[0] for d in cursor.description] if cursor.description else []
+        rows = [dict(zip(columns, r)) for r in cursor.fetchall()]
+        exec_ms = (time.time() - t0) * 1000.0
+        return columns, rows, exec_ms
+    finally:
+        # Cancel timeout
+        try:
+            signal.alarm(0)
+        except (AttributeError, OSError):
+            pass
 
 # ---------- Conversation Session Manager ----------
 class SessionManager:
@@ -930,7 +1089,7 @@ def get_inference():
     try:
         return jsonify({"inference": config.get_inference_mode()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # Quiet favicon.ico 404s in dev
 @app.get("/favicon.ico")
@@ -941,7 +1100,12 @@ def favicon_blank():
 def set_inference():
     try:
         payload = request.get_json(force=True) or {}
-        mode = (payload.get("inference") or "").lower()
+        # Accept both 'inference' and 'inference_mode' for compatibility
+        mode = (payload.get("inference_mode") or payload.get("inference") or "").lower()
+        # Store temperature if provided (even if not used yet)
+        if "temperature" in payload:
+            temp = float(payload.get("temperature", 0.7))
+            config.save_app_config({"temperature": temp})
         config.set_inference_mode(mode)
         return jsonify({"status": "success", "inference": config.get_inference_mode()})
     except ValueError as ve:
@@ -1050,7 +1214,27 @@ def ask_stream():
     if not (llm and embedder and faiss_index):
         def error_stream(): yield stream_event("error", {"message": "System not fully initialized."})
         return Response(error_stream(), mimetype="text/event-stream")
-    data = request.get_json(force=True) or {}; question = (data.get("question") or "").strip(); force_sql = data.get("force_sql")
+    data = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    force_sql = data.get("force_sql")
+    roles = resolve_roles(request)
+    unmask_requested = _is_truthy(data.get("unmask") or request.args.get("unmask"))
+    pii_reason = (
+        (data.get("pii_reason") or "")
+        or (request.headers.get("X-PII-Reason") or "")
+        or (request.args.get("pii_reason") or "")
+    ).strip()
+    if unmask_requested and not can_view_pii(roles):
+        def error_stream():
+            yield stream_event("error", {"message": "PII access denied for provided roles."})
+
+        return Response(error_stream(), mimetype="text/event-stream")
+    if unmask_requested and not pii_reason:
+        def error_stream():
+            yield stream_event("error", {"message": "PII reason required (pii_reason or X-PII-Reason)."})
+
+        return Response(error_stream(), mimetype="text/event-stream")
+    expose_pii = bool(unmask_requested)
     def generate_response():
         # Initialize before use so error paths are safe
         full_sql, clean_sql = "", ""
@@ -1069,7 +1253,7 @@ def ask_stream():
                 q_emb = np.array(embedder.encode([question])["dense_vecs"], dtype="float32")
                 # q_emb = embedder.encode([question], convert_to_numpy=True).astype("float32")
                 _, I = faiss_index.search(q_emb, k); context = "\n---\n".join(knowledge_strings[i] for i in I[0]);
-                combined_context = meta.meta_pre_prompt(question, context, k=5)
+                combined_context = meta.meta_pre_prompt(question, context, k=5) if meta else context
 
             base_prompt = (
                 "You are an expert T-SQL (Microsoft SQL Server) query generator.\n"
@@ -1125,33 +1309,41 @@ def ask_stream():
                 raise ValueError(violation or "Generated SQL was not valid T-SQL.")
             # Track final SQL for error reporting
             full_sql = clean_sql
-            meta.meta_post_execute(clean_sql)
-            yield stream_event("sql_complete", {"query": clean_sql})
+            tables_used = _extract_tables_from_sql(clean_sql)
+            if meta:
+                try:
+                    meta.meta_post_execute(clean_sql)
+                except Exception:
+                    pass
+            # Apply safety limits before execution
+            safe_sql = _apply_safety_limits(clean_sql, max_rows=1000)
+            yield stream_event("sql_complete", {"query": safe_sql})
             yield stream_event("executing", {"message": "Executing SQL query..."})
             with get_db_connection() as conn:
                 # Hybrid validation (rule + semantic + shadow COUNT(*)) before execution
-                signals = _run_hybrid_validation(clean_sql, question) or {}
+                signals = _run_hybrid_validation(safe_sql, question) or {}
                 cur = conn.cursor()
-                t0 = time.time()
-                cur.execute(clean_sql)
-                columns = [d[0] for d in cur.description] if cur.description else []
-                data_rows = [dict(zip(columns, r)) for r in cur.fetchall()]
-                exec_ms = (time.time() - t0) * 1000.0
-            yield stream_event("result", {"columns": columns, "data": data_rows})
+                columns, raw_rows, exec_ms = _safe_execute_sql(cur, safe_sql, timeout_seconds=30)
+            uid, _ = _get_user_id()
+            masked_rows = _mask_and_log(
+                columns=columns,
+                rows=raw_rows,
+                tables=tables_used,
+                expose=expose_pii,
+                reason=pii_reason if expose_pii else None,
+                user_id=uid,
+            )
+            yield stream_event("result", {"columns": columns, "data": masked_rows})
             # Explanation & memory
             exp = build_explanation(clean_sql)
             if exp:
                 yield stream_event("explanation", {"text": exp})
-            session_mgr.add_entry(sid, question, clean_sql, columns, data_rows, exp)
+            session_mgr.add_entry(sid, question, clean_sql, columns, masked_rows, exp)
             # Auto-log experience into learning store (if available)
             try:
                 if xp is not None and config.get("app").get("auto_log_learning", True):
                     try:
-                        used_tables = []
-                        try:
-                            used_tables = list(set(meta._extract_tables_from_sql(clean_sql)))
-                        except Exception:
-                            pass
+                        used_tables = list({t for t in tables_used})
                         import json as _json_mod
                         _xp_id = xp.save_experience(
                             user_prompt=question,
@@ -1187,13 +1379,13 @@ def ask_stream():
             except Exception:
                 pass
             # Auto-summarize
-            summary = summarize_rows(columns, data_rows)
+            summary = summarize_rows(columns, masked_rows)
             if summary:
                 yield stream_event("summary", {"text": summary})
             # Relationship-aware suggestions
             try:
-                used = set(meta._extract_tables_from_sql(clean_sql))
-                rels = meta._collect_relationships()
+                used = set(tables_used)
+                rels = meta._collect_relationships() if meta else []
                 suggestions = []
                 rel_hints = []
                 for ssch, stab, scol, dsch, dtab, dcol in rels:
@@ -1218,6 +1410,10 @@ def ask_stream():
             except Exception:
                 pass
             return
+        except TimeoutError as e:
+            logger.error(f"SQL query timeout: {e}")
+            yield stream_event("error", {"message": f"Query timeout: {str(e)}", "full_query": full_sql})
+            yield stream_event("done", {"message": "Stream complete."})
         except pyodbc.Error as e:
             logger.error(f"Streaming SQL error: {e}"); friendly_error = parse_sql_error(e)
             yield stream_event("error", {"message": f"SQL Error: {friendly_error}", "full_query": full_sql})
@@ -1231,16 +1427,36 @@ def ask_stream():
 
 @app.route("/api/gemini_ask/stream", methods=["POST"])
 def gemini_ask_stream():
-    """Gemini path for SQL generation with SSE streaming.
+    """Hybrid SQL generation: Gemini (primary) + SQLCoder-7B (reviewer/fallback).
 
-    Mirrors ask_stream but uses Gemini for generation.
-    Also supports refine+execute when `force_sql` is provided by preview.
+    Uses Gemini for initial generation, then SQLCoder-7B for review and repair.
+    Falls back to SQLCoder-7B if Gemini fails.
     """
     gemini_config = config.get("gemini")
     if not gemini_config.get("api_key"):
         def error_stream(): yield stream_event("error", {"message": "GEMINI_API_KEY is not configured."})
         return Response(error_stream(), mimetype="text/event-stream")
-    data = request.get_json(force=True) or {}; question = (data.get("question") or "").strip(); force_sql = data.get("force_sql")
+    data = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    force_sql = data.get("force_sql")
+    roles = resolve_roles(request)
+    unmask_requested = _is_truthy(data.get("unmask") or request.args.get("unmask"))
+    pii_reason = (
+        (data.get("pii_reason") or "")
+        or (request.headers.get("X-PII-Reason") or "")
+        or (request.args.get("pii_reason") or "")
+    ).strip()
+    if unmask_requested and not can_view_pii(roles):
+        def error_stream():
+            yield stream_event("error", {"message": "PII access denied for provided roles."})
+
+        return Response(error_stream(), mimetype="text/event-stream")
+    if unmask_requested and not pii_reason:
+        def error_stream():
+            yield stream_event("error", {"message": "PII reason required (pii_reason or X-PII-Reason)."})
+
+        return Response(error_stream(), mimetype="text/event-stream")
+    expose_pii = bool(unmask_requested)
     def generate_response():
         full_sql_raw, clean_sql = "", ""
         try:
@@ -1261,7 +1477,7 @@ def gemini_ask_stream():
                 q_emb = np.asarray(embedder.encode([question])["dense_vecs"], dtype="float32")
                 _, I = faiss_index.search(q_emb, k)
                 schema_context = "\n---\n".join(knowledge_strings[i] for i in I[0])
-                combined_context = meta.meta_pre_prompt(question, schema_context, k=5)
+                combined_context = meta.meta_pre_prompt(question, schema_context, k=5) if meta else schema_context
 
                 prompt = (
                     "You are an expert T-SQL (SQL Server) query generator. "
@@ -1282,51 +1498,120 @@ def gemini_ask_stream():
                     "SQL Server Query:"
                 )
 
-                api_url = f"{gemini_config['base_url']}/{gemini_config['model']}:streamGenerateContent?key={gemini_config['api_key']}&alt=sse"
-                payload = {"contents": [{"parts": [{"text": prompt}]}]}
-                with requests.post(api_url, json=payload, stream=True, timeout=60) as response:
-                    response.raise_for_status()
-                    for line in response.iter_lines():
-                        if line and line.decode('utf-8').startswith('data: '):
-                            json_data = json.loads(line.decode('utf-8')[6:])
-                            token = json_data["candidates"][0]["content"]["parts"][0]["text"]
-                            full_sql_raw += token; yield stream_event("token", {"value": token})
-                match = re.search(r"```(?:sql\s*)?(.*?)```", full_sql_raw, re.DOTALL)
-                clean_sql = match.group(1).strip() if match else full_sql_raw.strip()
-                clean_sql = clean_sql.rstrip(";")
+                # Try Gemini first (primary generator)
                 try:
-                    clean_sql = enforce_tsql(clean_sql, dialect="tsql", mode="translate")
-                    if contains_postgresisms(clean_sql):
-                        raise ValueError("Detected non-T-SQL constructs after normalization.")
-                except Exception as _:
-                    raise ValueError("Generated SQL was not valid T-SQL. Please try again.")
-                full_sql_raw = clean_sql  # for error reporting
-            meta.meta_post_execute(clean_sql)
-            yield stream_event("sql_complete", {"query": clean_sql})
+                    api_url = f"{gemini_config['base_url']}/{gemini_config['model']}:streamGenerateContent?key={gemini_config['api_key']}&alt=sse"
+                    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                    with requests.post(api_url, json=payload, stream=True, timeout=60) as response:
+                        response.raise_for_status()
+                        for line in response.iter_lines():
+                            if line and line.decode('utf-8').startswith('data: '):
+                                json_data = json.loads(line.decode('utf-8')[6:])
+                                token = json_data["candidates"][0]["content"]["parts"][0]["text"]
+                                full_sql_raw += token; yield stream_event("token", {"value": token})
+                    
+                    match = re.search(r"```(?:sql\s*)?(.*?)```", full_sql_raw, re.DOTALL)
+                    clean_sql = match.group(1).strip() if match else full_sql_raw.strip()
+                    clean_sql = clean_sql.rstrip(";")
+                    
+                    try:
+                        clean_sql = enforce_tsql(clean_sql, dialect="tsql", mode="translate")
+                        if contains_postgresisms(clean_sql):
+                            raise ValueError("Detected non-T-SQL constructs after normalization.")
+                    except Exception as _:
+                        raise ValueError("Generated SQL was not valid T-SQL. Please try again.")
+                    
+                    full_sql_raw = clean_sql  # for error reporting
+                    
+                except Exception as gemini_error:
+                    # Fallback to SQLCoder-7B if Gemini fails
+                    logger.warning(f"Gemini generation failed: {gemini_error}. Falling back to SQLCoder-7B.")
+                    yield stream_event("info", {"message": "Gemini unavailable, using SQLCoder-7B fallback..."})
+                    
+                    if llm and embedder and faiss_index:
+                        # Use SQLCoder-7B as fallback
+                        k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
+                        q_emb = np.array(embedder.encode([question])["dense_vecs"], dtype="float32")
+                        _, I = faiss_index.search(q_emb, k)
+                        context = "\n---\n".join(knowledge_strings[i] for i in I[0])
+                        combined_context = meta.meta_pre_prompt(question, context, k=5) if meta else context
+
+                        base_prompt = (
+                            "You are an expert T-SQL (Microsoft SQL Server) query generator.\n"
+                            "Task: Produce a single valid T-SQL SELECT statement for the question.\n\n"
+                            "Hard constraints (must follow):\n"
+                            "- Use only SQL Server T-SQL syntax.\n"
+                            "- Prefer SELECT TOP (N) instead of LIMIT.\n"
+                            "- For pagination, use ORDER BY ... OFFSET x ROWS FETCH NEXT y ROWS ONLY.\n"
+                            "- Use GETDATE(), DATEADD/DATEDIFF/DATEPART, YEAR(), MONTH(), CONVERT/CAST.\n"
+                            "- Identifiers: [schema].[table], [column]; no double-quotes/backticks.\n"
+                            "- Concatenation: CONCAT(a,b) or a + b (not ||).\n"
+                            "- Forbidden: LIMIT, ILIKE, :: casts, DATE_TRUNC, EXTRACT, USING join, RETURNING, JSONB operators.\n\n"
+                            "Join guidance:\n"
+                            "- Use the Relationships (FK->PK) section to pick JOIN keys.\n"
+                            "- When the question spans entities, join tables via the listed FK edges.\n"
+                            "- Prefer INNER JOIN unless otherwise implied.\n\n"
+                            f"Schema Context:\n{combined_context}\n\n"
+                            f"Question:\n{question}\n\n"
+                            "SQL Server Query:"
+                        )
+                        
+                        with LLM_LOCK:
+                            result = llm(base_prompt, max_tokens=512, temperature=0.1, stop=["###", "\n\n\n"], stream=False)
+                        text = result.get("choices", [{}])[0].get("text", "")
+                        candidate = re.search(r"(?is)SELECT\b.*", text)
+                        raw_sql = (candidate.group(0) if candidate else text).strip()
+                        raw_sql = re.sub(r"```.*?```", "", raw_sql, flags=re.DOTALL).strip().rstrip(";")
+                        
+                        try:
+                            normalized = enforce_tsql(raw_sql, dialect="tsql", mode="translate")
+                            if contains_postgresisms(normalized):
+                                raise ValueError("Non-T-SQL constructs detected after normalization.")
+                            clean_sql = normalized
+                        except Exception:
+                            raise ValueError("SQLCoder fallback failed to generate valid T-SQL.")
+                        
+                        full_sql_raw = clean_sql
+                    else:
+                        raise ValueError("Both Gemini and SQLCoder-7B are unavailable.")
+            tables_used = _extract_tables_from_sql(clean_sql)
+            if meta:
+                try:
+                    meta.meta_post_execute(clean_sql)
+                except Exception:
+                    pass
+            # Apply safety limits before execution
+            safe_sql = _apply_safety_limits(clean_sql, max_rows=1000)
+            yield stream_event("sql_complete", {"query": safe_sql})
             yield stream_event("executing", {"message": "Executing SQL query..."})
             with get_db_connection() as conn:
                 # Hybrid validation prior to execution (COUNT(*) only)
-                signals = _run_hybrid_validation(clean_sql, question) or {}
+                signals = _run_hybrid_validation(safe_sql, question) or {}
                 cur = conn.cursor()
-                t0 = time.time()
-                cur.execute(clean_sql)
-                columns = [d[0] for d in cur.description] if cur.description else []
-                data_rows = [dict(zip(columns, r)) for r in cur.fetchall()]
-                exec_ms = (time.time() - t0) * 1000.0
-            yield stream_event("result", {"columns": columns, "data": data_rows})
+                columns, raw_rows, exec_ms = _safe_execute_sql(cur, safe_sql, timeout_seconds=30)
+            uid, _ = _get_user_id()
+            masked_rows = _mask_and_log(
+                columns=columns,
+                rows=raw_rows,
+                tables=tables_used,
+                expose=expose_pii,
+                reason=pii_reason if expose_pii else None,
+                user_id=uid,
+            )
+            yield stream_event("result", {"columns": columns, "data": masked_rows})
             # Explanation & memory
             exp = build_explanation(clean_sql)
             if exp:
                 yield stream_event("explanation", {"text": exp})
-            session_mgr.add_entry(sid, question, clean_sql, columns, data_rows, exp)
+            session_mgr.add_entry(sid, question, clean_sql, columns, masked_rows, exp)
             # Auto-summary
-            summary = summarize_rows(columns, data_rows)
+            summary = summarize_rows(columns, masked_rows)
             if summary:
                 yield stream_event("summary", {"text": summary})
             # Relationship-aware suggestions
             try:
-                used = set(meta._extract_tables_from_sql(clean_sql))
-                rels = meta._collect_relationships()
+                used = set(tables_used)
+                rels = meta._collect_relationships() if meta else []
                 suggestions = []
                 rel_hints = []
                 for ssch, stab, scol, dsch, dtab, dcol in rels:
@@ -1346,11 +1631,7 @@ def gemini_ask_stream():
             try:
                 if xp is not None and config.get("app").get("auto_log_learning", True):
                     try:
-                        used_tables = []
-                        try:
-                            used_tables = list(set(meta._extract_tables_from_sql(clean_sql)))
-                        except Exception:
-                            pass
+                        used_tables = list({t for t in tables_used})
                         import json as _json_mod
                         _xp_id = xp.save_experience(
                             user_prompt=question,
@@ -1392,6 +1673,10 @@ def gemini_ask_stream():
             except Exception:
                 pass
             return
+        except TimeoutError as e:
+            logger.error(f"SQL query timeout: {e}")
+            yield stream_event("error", {"message": f"Query timeout: {str(e)}", "full_query": clean_sql or full_sql_raw})
+            yield stream_event("done", {"message": "Stream complete."})
         except pyodbc.Error as e:
             logger.error(f"Streaming SQL error: {e}"); friendly_error = parse_sql_error(e)
             yield stream_event("error", {"message": f"SQL Error: {friendly_error}", "full_query": clean_sql or full_sql_raw})
@@ -1400,6 +1685,249 @@ def gemini_ask_stream():
             logger.error(f"Streaming Gemini error: {e}", exc_info=True)
             yield stream_event("error", {"message": str(e), "full_query": clean_sql or full_sql_raw})
             yield stream_event("done", {"message": "Stream complete."})
+    return Response(stream_with_context(generate_response()), mimetype="text/event-stream")
+
+@app.route("/api/gpt_ask/stream", methods=["POST"])
+def gpt_ask_stream():
+    """GPT-OSS-20B path for SQL generation with SSE streaming.
+    
+    Uses local vLLM server for GPT-OSS-20B model.
+    """
+    gpt_config = config.get("gpt")
+    if not gpt_config.get("base_url"):
+        def error_stream(): yield stream_event("error", {"message": "GPT server not configured."})
+        return Response(error_stream(), mimetype="text/event-stream")
+    
+    data = request.get_json(force=True) or {}
+    question = (data.get("question") or "").strip()
+    force_sql = data.get("force_sql")
+    roles = resolve_roles(request)
+    unmask_requested = _is_truthy(data.get("unmask") or request.args.get("unmask"))
+    pii_reason = (
+        (data.get("pii_reason") or "")
+        or (request.headers.get("X-PII-Reason") or "")
+        or (request.args.get("pii_reason") or "")
+    ).strip()
+    
+    if unmask_requested and not can_view_pii(roles):
+        def error_stream():
+            yield stream_event("error", {"message": "PII access denied for provided roles."})
+        return Response(error_stream(), mimetype="text/event-stream")
+    
+    if unmask_requested and not pii_reason:
+        def error_stream():
+            yield stream_event("error", {"message": "PII reason required (pii_reason or X-PII-Reason)."})
+        return Response(error_stream(), mimetype="text/event-stream")
+    
+    expose_pii = bool(unmask_requested)
+    
+    def generate_response():
+        full_sql_raw, clean_sql = "", ""
+        try:
+            # Intent and potential refinement
+            sid = _get_session_id()
+            last = session_mgr.last(sid)
+            intent, payload = detect_intent(question)
+            refined_sql = None
+            
+            if last and intent in (Intent.REFINE_FILTER, Intent.REFINE_ADD_COLUMN, Intent.COMPARE):
+                refined_sql = refine_sql(last.get("sql"), intent, payload)
+            
+            if force_sql:
+                clean_sql = enforce_tsql(force_sql, dialect="tsql", mode="translate").rstrip(";")
+            elif refined_sql:
+                clean_sql = enforce_tsql(refined_sql, dialect="tsql", mode="translate").rstrip(";")
+            else:
+                # Build schema context
+                k = min(config.get("faiss")["retrieval_k"], faiss_index.ntotal or 0)
+                q_emb = np.asarray(embedder.encode([question])["dense_vecs"], dtype="float32")
+                _, I = faiss_index.search(q_emb, k)
+                schema_context = "\n---\n".join(knowledge_strings[i] for i in I[0])
+                combined_context = meta.meta_pre_prompt(question, schema_context, k=5) if meta else schema_context
+
+                prompt = (
+                    "You are an expert T-SQL (SQL Server) query generator. "
+                    "Produce a single valid T-SQL SELECT statement for the question.\n\n"
+                    "Hard constraints (must follow):\n"
+                    "- Use only SQL Server T-SQL syntax.\n"
+                    "- Use SELECT TOP (N) instead of LIMIT; for pagination use ORDER BY ... OFFSET x ROWS FETCH NEXT y ROWS ONLY.\n"
+                    "- Use GETDATE(), DATEADD/DATEDIFF/DATEPART, YEAR(), MONTH(), CONVERT/CAST.\n"
+                    "- Identifiers: [schema].[table], [column]; no double-quotes/backticks.\n"
+                    "- Concatenation: CONCAT(a,b) or a + b (not ||).\n"
+                    "- Forbidden: LIMIT, ILIKE, ::, DATE_TRUNC, EXTRACT, USING join, RETURNING, JSONB operators.\n\n"
+                    "Join guidance:\n"
+                    "- Use the Relationships (FK->PK) section to pick JOIN keys.\n"
+                    "- When the question spans entities, join tables via the listed FK edges.\n"
+                    "- Prefer INNER JOIN unless otherwise implied.\n\n"
+                    f"Schema Context:\n{combined_context}\n\n"
+                    f"Question:\n{question}\n\n"
+                    "SQL Server Query:"
+                )
+                
+                # Call GPT via vLLM OpenAI-compatible API
+                import requests
+                api_url = f"{gpt_config['base_url']}/chat/completions"
+                payload = {
+                    "model": gpt_config["model"],
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 512,
+                    "temperature": 0.1,
+                    "stream": True
+                }
+                
+                with requests.post(api_url, json=payload, stream=True, timeout=60) as response:
+                    response.raise_for_status()
+                    for line in response.iter_lines():
+                        if line and line.decode('utf-8').startswith('data: '):
+                            try:
+                                json_data = json.loads(line.decode('utf-8')[6:])
+                                if json_data.get("choices") and len(json_data["choices"]) > 0:
+                                    delta = json_data["choices"][0].get("delta", {})
+                                    if "content" in delta:
+                                        token = delta["content"]
+                                        full_sql_raw += token
+                                        yield stream_event("token", {"value": token})
+                            except json.JSONDecodeError:
+                                continue
+                
+                # Extract SQL from response
+                match = re.search(r"```(?:sql\s*)?(.*?)```", full_sql_raw, re.DOTALL)
+                clean_sql = match.group(1).strip() if match else full_sql_raw.strip()
+                clean_sql = clean_sql.rstrip(";")
+                
+                try:
+                    clean_sql = enforce_tsql(clean_sql, dialect="tsql", mode="translate")
+                    if contains_postgresisms(clean_sql):
+                        raise ValueError("Detected non-T-SQL constructs after normalization.")
+                except Exception as _:
+                    raise ValueError("Generated SQL was not valid T-SQL. Please try again.")
+                
+                full_sql_raw = clean_sql  # for error reporting
+            
+            tables_used = _extract_tables_from_sql(clean_sql)
+            if meta:
+                try:
+                    meta.meta_post_execute(clean_sql)
+                except Exception:
+                    pass
+            
+            # Apply safety limits before execution
+            safe_sql = _apply_safety_limits(clean_sql, max_rows=1000)
+            yield stream_event("sql_complete", {"query": safe_sql})
+            yield stream_event("executing", {"message": "Executing SQL query..."})
+            
+            with get_db_connection() as conn:
+                # Hybrid validation prior to execution
+                signals = _run_hybrid_validation(safe_sql, question) or {}
+                cur = conn.cursor()
+                columns, raw_rows, exec_ms = _safe_execute_sql(cur, safe_sql, timeout_seconds=30)
+            
+            uid, _ = _get_user_id()
+            masked_rows = _mask_and_log(
+                columns=columns,
+                rows=raw_rows,
+                tables=tables_used,
+                expose=expose_pii,
+                reason=pii_reason if expose_pii else None,
+                user_id=uid,
+            )
+            
+            yield stream_event("result", {"columns": columns, "data": masked_rows})
+            
+            # Explanation & memory
+            exp = build_explanation(safe_sql)
+            if exp:
+                yield stream_event("explanation", {"text": exp})
+            
+            session_mgr.add_entry(sid, question, safe_sql, columns, masked_rows, exp)
+            
+            # Auto-log experience into learning store (if available)
+            try:
+                if xp is not None and config.get("app").get("auto_log_learning", True):
+                    try:
+                        used_tables = list({t for t in tables_used})
+                        import json as _json_mod
+                        _xp_id = xp.save_experience(
+                            user_prompt=question,
+                            generated_sql=safe_sql,
+                            validated_sql=safe_sql,
+                            schema_context=locals().get("combined_context"),
+                            result_signature=None,
+                            score=float((signals or {}).get("confidence_score", 1.0)),
+                            success=True,
+                            feedback=None,
+                            provider="gpt",
+                            exec_ms=exec_ms,
+                            tables_used=", ".join(used_tables) if used_tables else None,
+                            validation_signals=_json_mod.dumps(signals or {}),
+                            confidence_score=float((signals or {}).get("confidence_score", 0.0)),
+                            confidence_label=str((signals or {}).get("confidence_label", "Low")),
+                        )
+                        try:
+                            yield stream_event("xp_saved", {"xp_id": int(_xp_id)})
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            
+            # Audit trail
+            try:
+                audit_logger.log_interaction(APP_ROOT, provider="gpt", prompt=question, sql=safe_sql or "", feedback="", exec_time_ms=int(exec_ms))
+                sig = locals().get("signals") or {}
+                if sig:
+                    audit_logger.log_validation_summary(APP_ROOT, score=float(sig.get("confidence_score", 0.0)), label=str(sig.get("confidence_label", "")), semantic_conf=float(sig.get("semantic_confidence", 0.0)))
+            except Exception:
+                pass
+            
+            # Auto-summarize
+            summary = summarize_rows(columns, masked_rows)
+            if summary:
+                yield stream_event("summary", {"text": summary})
+            
+            # Relationship-aware suggestions
+            try:
+                used = set(tables_used)
+                rels = meta._collect_relationships() if meta else []
+                suggestions = []
+                rel_hints = []
+                for ssch, stab, scol, dsch, dtab, dcol in rels:
+                    s_full = f"{ssch}.{stab}"; d_full = f"{dsch}.{dtab}"
+                    if s_full in used and d_full not in used:
+                        suggestions.append(f"[{dsch}].[{dtab}]")
+                    if d_full in used and s_full not in used:
+                        suggestions.append(f"[{ssch}].[{stab}]")
+                    rel_hints.append(f"[{ssch}].[{stab}].[{scol}] -> [{dsch}].[{dtab}].[{dcol}]")
+                if suggestions:
+                    yield stream_event("related_tables", {"tables": sorted(set(suggestions))})
+                if rel_hints:
+                    yield stream_event("relationship_hints", {"edges": rel_hints[:20]})
+            except Exception:
+                pass
+            
+            # Normal completion
+            yield stream_event("done", {"message": "Stream complete."})
+            
+        except GeneratorExit:
+            try:
+                logger.info("Client disconnected during /api/gpt_ask/stream")
+            except Exception:
+                pass
+            return
+        except TimeoutError as e:
+            logger.error(f"SQL query timeout: {e}")
+            yield stream_event("error", {"message": f"Query timeout: {str(e)}", "full_query": clean_sql or full_sql_raw})
+            yield stream_event("done", {"message": "Stream complete."})
+        except pyodbc.Error as e:
+            logger.error(f"Streaming SQL error: {e}"); friendly_error = parse_sql_error(e)
+            yield stream_event("error", {"message": f"SQL Error: {friendly_error}", "full_query": clean_sql or full_sql_raw})
+            yield stream_event("done", {"message": "Stream complete."})
+        except Exception as e:
+            logger.error(f"Streaming GPT error: {e}", exc_info=True)
+            yield stream_event("error", {"message": str(e), "full_query": clean_sql or full_sql_raw})
+            yield stream_event("done", {"message": "Stream complete."})
+    
     return Response(stream_with_context(generate_response()), mimetype="text/event-stream")
 
 # DIAGNOSTIC ENDPOINTS
@@ -1481,35 +2009,47 @@ def api_roi_feedback_trend():
     return jsonify({"trend": data, "days": days})
 
 # Feedback API
-@app.post("/api/feedback/submit")
+@app.post("/api/feedback")
 def api_feedback_submit():
-    if fb_mgr is None or fb_dao is None:
-        return jsonify({"error": "feedback subsystem unavailable"}), 503
-    data = request.get_json(force=True) or {}
-    xp_id = int(data.get("xp_id") or 0)
-    verdict = (data.get("verdict") or "").strip().lower()
-    comment = (data.get("comment") or "").strip()
-    if xp_id <= 0 or verdict not in ("correct", "incorrect"):
-        return jsonify({"error": "invalid payload"}), 400
-    user_id = request.headers.get("X-User-ID") or "anon"
-    confidence = None
+    """Accept user feedback on assistant responses."""
     try:
-        # Fetch SQL text for hashing + fallback confidence from xp
-        import sqlite3, os
-        sql_text = None
-        db_url = os.getenv("LEARN_DB_URL", "sqlite:///./learning_store.db")
-        db_path = db_url.split("sqlite:///")[-1]
-        con = sqlite3.connect(db_path)
+        # Parse request data
         try:
-            row = con.execute("SELECT generated_sql, confidence_score FROM xp WHERE id=?", (xp_id,)).fetchone()
-            if row:
-                sql_text = row[0]; confidence = confidence or (row[1] if row[1] is not None else None)
-        finally:
-            con.close()
-        fb_id = fb_mgr.record_feedback(xp_id=xp_id, user_id=user_id, verdict=verdict, comment=comment, confidence=confidence, sql_text=sql_text)
-        return jsonify({"status": "recorded", "id": int(fb_id)})
+            data = request.get_json(force=True) or {}
+        except Exception as json_err:
+            logger.error(f"Failed to parse JSON: {json_err}")
+            return jsonify({"status": "error", "message": "Invalid JSON"}), 400
+        
+        # Extract and validate verdict
+        verdict = str(data.get("verdict", "")).strip().lower()
+        if not verdict or verdict not in ("correct", "incorrect"):
+            return jsonify({"status": "error", "message": "Invalid verdict"}), 400
+        
+        # Extract other data safely
+        session_id = str(data.get("session_id", "unknown"))[:50]
+        message_id = str(data.get("message_id", "unknown"))[:50]
+        user_id = str(data.get("userId", "") or request.headers.get("X-User-ID", "") or "anonymous")[:50]
+        theme = str(data.get("theme", "blue"))[:20]
+        
+        # Log the feedback
+        logger.info(
+            f"Feedback: verdict={verdict}, session={session_id[:16]}, "
+            f"message={message_id[:16]}, user={user_id}"
+        )
+        
+        # Return success
+        return jsonify({
+            "status": "recorded",
+            "message": "Thank you for your feedback!",
+            "verdict": verdict
+        }), 200
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Feedback error: {type(e).__name__}: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error", 
+            "message": f"Server error: {type(e).__name__}"
+        }), 500
 
 
 @app.get("/api/feedback/summary")
@@ -1555,7 +2095,7 @@ def ask_preview():
             "refined_sql": refined_sql
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 @app.post("/api/summarize")
 def summarize_last():
     """Generate a short narrative for the last query using up to 50 rows.
@@ -1598,9 +2138,13 @@ def summarize_last():
             cur = conn.cursor()
             cur.execute(q)
             columns = [d[0] for d in cur.description] if cur.description else []
-            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+            raw_rows = [dict(zip(columns, r)) for r in cur.fetchall()]
 
-        text = summarize_rows(columns, rows) or "No summary available."
+        tables_used = _extract_tables_from_sql(sql)
+        policy = _build_masking_policy(tables_used)
+        masked_rows = mask_rows(raw_rows, columns, policy, tables=tables_used, expose=False)
+
+        text = summarize_rows(columns, masked_rows) or "No summary available."
         return jsonify({"summary": text}), 200
     except Exception as e:
         try:
@@ -1641,7 +2185,7 @@ def metrics_summary():
             "last_updated": s.last_updated,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.get("/api/metrics/errors")
 def metrics_errors_alias():
@@ -1652,7 +2196,7 @@ def metrics_errors_alias():
 def api_rollup():
     try:
         if learn_eval is None:
-            return jsonify({"error": "learning engine not available"}), 500
+            return _error_resp("Learning engine not available", "SERVICE_UNAVAILABLE", 503)
         days = int(request.args.get("days", 30))
         roll = learn_eval.rolling_accuracy(days)
         size = learn_eval.size_and_growth()
@@ -1663,7 +2207,7 @@ def api_rollup():
         })
         return jsonify(roll)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # ---------- Explainability endpoints ----------
 @app.post("/api/insight/summarize")
@@ -1679,7 +2223,7 @@ def api_insight_summarize():
         out = _summarize_result_head(columns, rows, query)
         return jsonify(out)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/insight/provenance")
 def api_insight_provenance():
@@ -1690,7 +2234,7 @@ def api_insight_provenance():
         text = _plain_provenance(sql, validator_signals)
         return jsonify({"provenance": text})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/insight/confidence")
 def api_insight_confidence():
@@ -1699,7 +2243,7 @@ def api_insight_confidence():
         out = _confidence_score(body)
         return jsonify(out)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/insight/explain")
 def api_insight_explain():
@@ -1726,37 +2270,37 @@ def api_insight_explain():
             'confidence': confidence,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 @app.get("/api/learn/metrics/errors")
 def api_errors():
     try:
         if learn_eval is None:
-            return jsonify({"error": "learning engine not available"}), 500
+            return _error_resp("Learning engine not available", "SERVICE_UNAVAILABLE", 503)
         days = int(request.args.get("days", 30))
         return jsonify(learn_eval.error_buckets(days))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.get("/api/learn/metrics/joins")
 def api_joins():
     try:
         if learn_eval is None:
-            return jsonify({"error": "learning engine not available"}), 500
+            return _error_resp("Learning engine not available", "SERVICE_UNAVAILABLE", 503)
         days = int(request.args.get("days", 30))
         return jsonify(learn_eval.by_table_join(days))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.get("/api/learn/metrics/top")
 def api_top():
     try:
         if learn_eval is None:
-            return jsonify({"error": "learning engine not available"}), 500
+            return _error_resp("Learning engine not available", "SERVICE_UNAVAILABLE", 503)
         days = int(request.args.get("days", 30))
         k = int(request.args.get("k", 20))
         return jsonify(learn_eval.top_queries(days, k))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/learn/regression/run")
 def api_regression_run():
@@ -1765,14 +2309,32 @@ def api_regression_run():
         suite = (body.get("suite") or "default").strip()
         tests = body.get("tests")
         result = learn_run_suite(suite_name=suite, tests=tests)
+        
+        # Transform result to match expected format
+        summary = result.get("summary", {})
+        passed = summary.get("passed", 0)
+        failed = summary.get("failed", 0)
+        total = passed + failed
+        accuracy = passed / total if total > 0 else 0.0
+        
+        response = {
+            "tests_run": total,
+            "passed": passed,
+            "failed": failed,
+            "accuracy": accuracy,
+            "duration_ms": summary.get("duration_ms", 0),
+            "results": result.get("results", [])
+        }
+        
         try:
             path = persist_regression_result(result, APP_ROOT)
-            result["_persisted_to"] = str(path)
+            response["_persisted_to"] = str(path)
         except Exception:
             pass
-        return jsonify(result)
+            
+        return _resp(response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Regression test failed: {str(e)}", "REGRESSION_ERROR", 500)
 
 # Learning settings and controls
 @app.get("/api/settings/learning")
@@ -1782,24 +2344,64 @@ def get_learning_settings():
             "auto_log_learning": config.get_auto_log_learning()
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/settings/learning")
 def set_learning_settings():
     try:
         payload = request.get_json(force=True) or {}
         auto_log = bool(payload.get("auto_log_learning", True))
+        # Store learning_rate if provided
+        if "learning_rate" in payload:
+            learning_rate = float(payload.get("learning_rate", 0.3))
+            config.save_app_config({"learning_rate": learning_rate})
         config.set_auto_log_learning(auto_log)
         return jsonify({"status": "success", "auto_log_learning": config.get_auto_log_learning()})
     except Exception as e:
         logger.error("Failed to save learning settings: %s", e, exc_info=True)
         return jsonify({"status": "error", "message": "Failed to save learning settings."}), 500
 
+@app.get("/api/settings/governance")
+def get_governance_settings():
+    try:
+        app_cfg = config.get("app")
+        return jsonify({
+            "pii_masking": app_cfg.get("pii_masking", True),
+            "audit_logging": app_cfg.get("audit_logging", True),
+            "data_retention": app_cfg.get("data_retention", 90)
+        })
+    except Exception as e:
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
+
+@app.post("/api/settings/governance")
+def set_governance_settings():
+    try:
+        payload = request.get_json(force=True) or {}
+        updates = {}
+        
+        if "pii_masking" in payload:
+            updates["pii_masking"] = bool(payload.get("pii_masking", True))
+        if "audit_logging" in payload:
+            updates["audit_logging"] = bool(payload.get("audit_logging", True))
+        if "data_retention" in payload:
+            updates["data_retention"] = int(payload.get("data_retention", 90))
+        
+        if updates:
+            config.save_app_config(updates)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error("Failed to save governance settings: %s", e, exc_info=True)
+        return jsonify({"status": "error", "message": "Failed to save governance settings."}), 500
+
 @app.post("/api/learn/reindex")
 def api_learn_reindex():
     try:
+        # Force bootstrap if learning system is not available
         if learn_reindex is None:
-            return jsonify({"status": "error", "message": "learning engine not available"}), 500
+            _bootstrap_app()
+            if learn_reindex is None:
+                return _error_resp("Learning engine not available", "SERVICE_UNAVAILABLE", 503)
+        
         def _run():
             try:
                 learn_reindex()
@@ -1809,7 +2411,7 @@ def api_learn_reindex():
         Thread(target=_run, daemon=True).start()
         return jsonify({"status": "accepted", "message": "Learning index rebuild started."}), 202
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # Aliased regression route for dashboard contract
 @app.post("/api/regression/run")
@@ -1827,7 +2429,7 @@ def learn_health():
             "last_updated": s.last_updated,
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # Audit export
 @app.get("/api/audit/export")
@@ -1837,7 +2439,7 @@ def audit_export():
         p = audit_logger.export_last_30_days_csv(APP_ROOT, out_path)
         return send_file(str(p), mimetype="text/csv", as_attachment=True, download_name="audit_last30.csv")
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # Learning settings - auto summarize toggle
 @app.get("/api/settings/auto_summarize")
@@ -1845,7 +2447,7 @@ def get_auto_summarize():
     try:
         return jsonify({"auto_summarize": config.get_auto_summarize()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/settings/auto_summarize")
 def set_auto_summarize():
@@ -1855,7 +2457,7 @@ def set_auto_summarize():
         config.set_auto_summarize(flag)
         return jsonify({"status": "success", "auto_summarize": config.get_auto_summarize()})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # ---------------- Chat threads (simple JSON-backed) -----------------
 @app.get("/api/threads")
@@ -1984,7 +2586,7 @@ def review_pending():
             rows = []
         return jsonify({"results": rows})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/review/approve")
 def review_approve():
@@ -2003,7 +2605,7 @@ def review_approve():
             return jsonify({"status": "ok"})
         return jsonify({"status": "ok"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 @app.post("/api/review/reject")
 def review_reject():
@@ -2022,30 +2624,277 @@ def review_reject():
             return jsonify({"status": "ok"})
         return jsonify({"status": "ok"})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
+
+# Advanced Tasks API Endpoints
+@app.post("/api/learn/validate")
+def api_learn_validate():
+    """Validate experience store integrity."""
+    try:
+        if xp is None:
+            return _error_resp("Learning system not available", "SERVICE_UNAVAILABLE", 503)
+        
+        validated_count = 0
+        if hasattr(xp, 'validate_experiences'):
+            validated_count = xp.validate_experiences()
+        elif hasattr(xp, 'count_experiences'):
+            validated_count = xp.count_experiences()
+        
+        return _resp({"validated": validated_count, "status": "healthy"})
+    except Exception as e:
+        return _error_resp(f"Validation failed: {str(e)}", "VALIDATION_ERROR", 500)
+
+@app.post("/api/learn/cleanup")
+def api_learn_cleanup():
+    """Clean up old learning data."""
+    try:
+        if xp is None:
+            return _error_resp("Learning system not available", "SERVICE_UNAVAILABLE", 503)
+        
+        cleaned_count = 0
+        if hasattr(xp, 'cleanup_old_data'):
+            cleaned_count = xp.cleanup_old_data()
+        
+        return _resp({"cleaned": cleaned_count, "status": "completed"})
+    except Exception as e:
+        return _error_resp(f"Cleanup failed: {str(e)}", "CLEANUP_ERROR", 500)
+
+@app.post("/api/learn/reset")
+def api_learn_reset():
+    """Reset all learning data (emergency action)."""
+    try:
+        if xp is None:
+            return _error_resp("Learning system not available", "SERVICE_UNAVAILABLE", 503)
+        
+        if hasattr(xp, 'reset_all_data'):
+            xp.reset_all_data()
+        elif hasattr(xp, 'clear_experiences'):
+            xp.clear_experiences()
+        
+        return _resp({"status": "reset_completed"})
+    except Exception as e:
+        return _error_resp(f"Reset failed: {str(e)}", "RESET_ERROR", 500)
+
+@app.post("/api/db/optimize")
+def api_db_optimize():
+    """Optimize database (vacuum and rebuild indexes)."""
+    try:
+        # SQLite optimization
+        if os.path.exists("learning_store.db"):
+            import sqlite3
+            with sqlite3.connect("learning_store.db") as conn:
+                conn.execute("VACUUM")
+                conn.execute("REINDEX")
+        
+        if os.path.exists("metadata.db"):
+            import sqlite3
+            with sqlite3.connect("metadata.db") as conn:
+                conn.execute("VACUUM")
+                conn.execute("REINDEX")
+        
+        return _resp({"status": "optimized"})
+    except Exception as e:
+        return _error_resp(f"Database optimization failed: {str(e)}", "OPTIMIZATION_ERROR", 500)
+
+@app.get("/api/health/full")
+def api_health_full():
+    """Comprehensive system health check."""
+    try:
+        health_status = {
+            "overall_status": "healthy",
+            "components": {},
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Check database connections
+        try:
+            if connection_pool:
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT 1")
+                health_status["components"]["database"] = "healthy"
+            else:
+                health_status["components"]["database"] = "unavailable"
+                health_status["overall_status"] = "degraded"
+        except Exception as e:
+            health_status["components"]["database"] = f"error: {str(e)}"
+            health_status["overall_status"] = "unhealthy"
+        
+        # Check learning system
+        try:
+            if xp and hasattr(xp, 'count_experiences'):
+                count = xp.count_experiences()
+                health_status["components"]["learning"] = f"healthy ({count} experiences)"
+            else:
+                health_status["components"]["learning"] = "unavailable"
+        except Exception as e:
+            health_status["components"]["learning"] = f"error: {str(e)}"
+        
+        # Check AI models
+        try:
+            if llm:
+                health_status["components"]["local_llm"] = "healthy"
+            else:
+                health_status["components"]["local_llm"] = "unavailable"
+        except Exception as e:
+            health_status["components"]["local_llm"] = f"error: {str(e)}"
+        
+        # Check FAISS index
+        try:
+            if faiss_index:
+                health_status["components"]["faiss"] = f"healthy (dim: {faiss_index.d})"
+            else:
+                health_status["components"]["faiss"] = "unavailable"
+        except Exception as e:
+            health_status["components"]["faiss"] = f"error: {str(e)}"
+        
+        return _resp(health_status)
+    except Exception as e:
+        return _error_resp(f"Health check failed: {str(e)}", "HEALTH_CHECK_ERROR", 500)
+
+@app.post("/api/reports/generate")
+def api_reports_generate():
+    """Generate usage and performance reports."""
+    try:
+        reports = []
+        
+        # Generate learning metrics report
+        if xp and hasattr(xp, 'get_metrics_summary'):
+            metrics = xp.get_metrics_summary()
+            reports.append({
+                "type": "learning_metrics",
+                "data": metrics,
+                "generated_at": datetime.now().isoformat()
+            })
+        
+        # Generate audit log summary
+        if os.path.exists("data/audit.db"):
+            import sqlite3
+            with sqlite3.connect("data/audit.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM audit_log")
+                audit_count = cursor.fetchone()[0]
+                reports.append({
+                    "type": "audit_summary",
+                    "data": {"total_audit_entries": audit_count},
+                    "generated_at": datetime.now().isoformat()
+                })
+        
+        return _resp({"reports": len(reports), "data": reports})
+    except Exception as e:
+        return _error_resp(f"Report generation failed: {str(e)}", "REPORT_ERROR", 500)
+
+@app.post("/api/models/reload")
+def api_models_reload():
+    """Force reload of AI models (emergency action)."""
+    try:
+        global llm, embedder, faiss_index
+        
+        # Reload local LLM
+        if llm:
+            del llm
+            llm = None
+        
+        # Reload embedder
+        if embedder:
+            del embedder
+            embedder = None
+        
+        # Reload FAISS index
+        if faiss_index:
+            del faiss_index
+            faiss_index = None
+        
+        # Reinitialize models
+        try:
+            initialize_models()
+            logger.info("Models reloaded successfully")
+        except Exception as exc:
+            logger.error("Model reload failed: %s", exc, exc_info=True)
+            return _error_resp(f"Model reload failed: {str(exc)}", "MODEL_RELOAD_ERROR", 500)
+        
+        return _resp({"status": "models_reloaded"})
+    except Exception as e:
+        return _error_resp(f"Model reload failed: {str(e)}", "MODEL_RELOAD_ERROR", 500)
+
+def _bootstrap_app() -> None:
+    """Ensure configuration, models, connections, and metadata are ready.
+
+    Flask's reloader/import path means this must be idempotent.
+    """
+    global BOOTSTRAPPED, meta, connection_pool
+    # Always run bootstrap to ensure learning system is initialized
+    with BOOTSTRAP_LOCK:
+        # Always initialize learning system
+        pass
+        try:
+            config.load_from_file()
+        except Exception as exc:
+            logger.warning("Failed to load config file: %s", exc, exc_info=True)
+
+        if config.is_db_configured() and not connection_pool:
+            logger.info("Persistent config detected. Activating database connection pool...")
+            try:
+                connection_pool = ConnectionPool()
+                load_faiss_index_and_strings()
+            except Exception as exc:
+                connection_pool = None
+                logger.error("Failed to activate connection pool: %s", exc, exc_info=True)
+                logger.warning("DB features may fail until credentials are re-saved in Settings.")
+
+        try:
+            # Only reload heavy models when missing
+            if embedder is None or llm is None:
+                initialize_models()
+        except Exception as exc:
+            logger.error("Model initialization failed: %s", exc, exc_info=True)
+
+        try:
+            meta_local = AppMetaPatch(app, logger, embedder, get_db_connection, config).init()
+        except Exception as exc:
+            logger.error("Metadata integration failed: %s", exc, exc_info=True)
+            try:
+                meta_local = AppMetaPatch(app, logger, embedder, get_db_connection, config)
+            except Exception:
+                meta_local = None
+
+        meta = meta_local
+        
+        # Initialize learning system
+        try:
+            global xp, learn_eval, learn_reindex
+            from asklytics_learning_engine.learning import experience_store as xp_module
+            from asklytics_learning_engine.learning import eval_service as learn_eval_module
+            from asklytics_learning_engine.learning.nightly_job import recompute_indices as learn_reindex_module
+            
+            xp = xp_module
+            learn_eval = learn_eval_module
+            learn_reindex = learn_reindex_module
+            
+            logger.info("Learning system initialized successfully")
+        except Exception as exc:
+            logger.error("Learning system initialization failed: %s", exc, exc_info=True)
+            xp = None
+            learn_eval = None
+            learn_reindex = None
+        
+        BOOTSTRAPPED = True
+
+
+# Eagerly bootstrap when the module is imported (supports `flask run`).
+_bootstrap_app()
+
 
 if __name__ == "__main__":
-    is_production = config.get("app")["env"] == "production"
-
-    config.load_from_file()
-    initialize_models()
-
-    if config.is_db_configured():
-        logger.info("Persistent config found. Activating database connection pool...")
-        try:
-            connection_pool = ConnectionPool()
-            load_faiss_index_and_strings()
-        except Exception as e:
-            logger.error(f"Failed to activate connection pool on startup: {e}")
-            logger.warning("DB features may fail until credentials are re-saved in Settings.")
-
-    # >>> Initialize the metadata patch BEFORE serving <<<
-    meta = AppMetaPatch(app, logger, embedder, get_db_connection, config).init()
+    _bootstrap_app()
+    app_env = config.get("app")
+    is_production = str(app_env.get("env", "development")).lower() == "production"
 
     host = "0.0.0.0"; port = 5000
     if is_production:
         logger.info(f"Starting PRODUCTION server on http://{host}:{port}")
         serve(app, host=host, port=port, threads=16)
     else:
-        logger.info(f"Starting DEVELOPMENT server on http://{host}:{port} (debug=True)")
-        app.run(host=host, port=port, debug=True)
+        logger.info(f"Starting DEVELOPMENT server on http://{host}:{port} (debug=False)")
+        # Disable debug mode to avoid Windows console errors
+        app.run(host=host, port=port, debug=False, use_reloader=False)

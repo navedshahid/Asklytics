@@ -1,626 +1,1493 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Settings - Analytica AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Settings - AskLytics</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="/static/css/asklytics.css" />
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
-            color: #212529;
+        :root { 
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
         }
-
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--gray-50); 
+            color: var(--gray-800); 
+            margin: 0; 
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+        
+        /* Layout */
+        .settings-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .settings-sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid var(--gray-200);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+        }
+        
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+        }
+        
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+        
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-500);
+            padding: 0 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--gray-700);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .nav-item:hover {
+            background: var(--gray-50);
+            color: var(--gray-900);
+        }
+        
+        .nav-item.active {
+            background: var(--primary-color);
+            color: white;
+            border-left-color: var(--primary-hover);
+        }
+        
+        .nav-item i {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        
+        .nav-item-text {
+            font-size: 0.9375rem;
+            font-weight: 500;
+        }
+        
+        /* Main Content */
+        .settings-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .settings-header {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .settings-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0;
+        }
+        
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        
+        .back-btn:hover {
+            color: var(--primary-color);
+        }
+        
+        .settings-content {
+            flex: 1;
             padding: 2rem;
-            background-color: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow-y: auto;
         }
-
+        
+        .settings-section {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .settings-section.active {
+            display: block;
+        }
+        
+        /* Cards */
+        .settings-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-description {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
         .form-label {
             display: block;
-            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
             font-weight: 500;
-            color: #495057;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
         }
-
+        
         .form-input {
             width: 100%;
-            padding: 0.625rem 0.875rem;
-            border: 1px solid #ced4da;
-            border-radius: 0.375rem;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.5rem;
             font-size: 0.9375rem;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            transition: all 0.2s ease;
+            background: white;
         }
-
+        
         .form-input:focus {
-            border-color: #86b7fe;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-            outline: 0;
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
-
+        
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .form-checkbox input[type="checkbox"] {
+            width: 1.125rem;
+            height: 1.125rem;
+            accent-color: var(--primary-color);
+        }
+        
+        .form-checkbox-label {
+            font-size: 0.9375rem;
+            color: var(--gray-700);
+        }
+        
+        /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            padding: 0.625rem 1.25rem;
-            border-radius: 0.375rem;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9375rem;
             font-weight: 500;
-            transition: background-color 0.2s ease-in-out;
+            text-decoration: none;
             border: none;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
-
+        
         .btn-primary {
-            background-color: #0d6efd;
+            background: var(--primary-color);
             color: white;
         }
-
+        
         .btn-primary:hover {
-            background-color: #0b5ed7;
+            background: var(--primary-hover);
         }
-
+        
         .btn-secondary {
-            background-color: #6c757d;
-            color: white;
+            background: var(--gray-100);
+            color: var(--gray-700);
         }
-
+        
         .btn-secondary:hover {
-            background-color: #5a6268;
+            background: var(--gray-200);
         }
-
+        
         .btn-success {
-            background-color: #198754;
+            background: var(--success-color);
             color: white;
         }
-
+        
         .btn-success:hover {
-            background-color: #157347;
+            background: #059669;
         }
-
+        
         .btn-warning {
-            background-color: #ffc107;
-            color: #000;
+            background: var(--warning-color);
+            color: white;
         }
-
+        
         .btn-warning:hover {
-            background-color: #e0a800;
+            background: #d97706;
         }
-
-        .btn i {
-            margin-right: 0.5rem;
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
         }
-
-        .alert {
-            padding: 0.875rem;
-            margin-bottom: 1rem;
-            border-radius: 0.375rem;
-            font-size: 0.9375rem;
+        
+        .btn-danger:hover {
+            background: #dc2626;
         }
-
-        .alert-success {
-            background-color: #d1e7dd;
-            color: #0f5132;
-            border: 1px solid #badbcc;
+        
+        .btn-sm {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
         }
-
-        .alert-danger {
-            background-color: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
+        
+        /* Task Status */
+        .task-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
-
-        .alert-info {
-            background-color: #cff4fc;
-            color: #055160;
-            border: 1px solid #b6effb;
+        
+        .task-status.loading {
+            background: #fef3c7;
+            color: #92400e;
         }
-
-        .section-divider {
-            margin: 2.5rem 0;
-            border-bottom: 1px solid #e9ecef;
+        
+        .task-status.success {
+            background: #d1fae5;
+            color: #065f46;
         }
-
-        h1,
-        h2 {
-            color: #343a40;
+        
+        .task-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        /* Task Log */
+        .task-log {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.8125rem;
+        }
+        
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-time {
+            color: var(--gray-500);
+            font-size: 0.75rem;
+        }
+        
+        .log-status {
+            font-weight: 500;
+        }
+        
+        .log-status.loading { color: var(--warning-color); }
+        .log-status.success { color: var(--success-color); }
+        .log-status.error { color: var(--danger-color); }
+        
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .settings-sidebar {
+                width: 240px;
+            }
+            
+            .grid-3 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .settings-container {
+                flex-direction: column;
+            }
+            
+            .settings-sidebar {
+                width: 100%;
+                height: auto;
+                position: static;
+            }
+            
+            .sidebar-nav {
+                display: flex;
+                overflow-x: auto;
+                padding: 0.5rem;
+            }
+            
+            .nav-section {
+                margin-bottom: 0;
+                margin-right: 1rem;
+            }
+            
+            .nav-item {
+                white-space: nowrap;
+                padding: 0.5rem 1rem;
+            }
+            
+            .settings-content {
+                padding: 1rem;
+            }
+            
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3 text-sm">
-                <a href="/metadata" class="text-blue-600 hover:underline">Meta Data Explorer</a>
-                <span>·</span>
-                <a href="/dashboard" class="text-blue-600 hover:underline">Dashboard</a>
-                <span>·</span>
-                <a href="/" class="text-blue-600 hover:underline">Main Chat Window</a>
+    <script>
+    // Apply theme immediately (before render)
+    (() => {
+      try {
+        const t = localStorage.getItem('theme') || 'blue';
+        document.documentElement.classList.toggle('light-grey', t === 'light-grey');
+      } catch (e) {
+        console.warn('Theme load failed:', e);
+      }
+    })();
+    </script>
+    <div class="settings-container">
+        <!-- Sidebar -->
+        <div class="settings-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <i data-feather="settings" class="w-6 h-6"></i>
+                    <span>Settings</span>
+                </div>
             </div>
-            <h1 class="text-2xl font-semibold">Settings</h1>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">General</div>
+                    <a href="#" class="nav-item active" data-section="general">
+                        <i data-feather="sliders"></i>
+                        <span class="nav-item-text">General</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="theme">
+                        <i data-feather="sun"></i>
+                        <span class="nav-item-text">Theme</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="inference">
+                        <i data-feather="cpu"></i>
+                        <span class="nav-item-text">Inference</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="learning">
+                        <i data-feather="book"></i>
+                        <span class="nav-item-text">Learning</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Database</div>
+                    <a href="#" class="nav-item" data-section="database">
+                        <i data-feather="database"></i>
+                        <span class="nav-item-text">Database</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="tables">
+                        <i data-feather="table"></i>
+                        <span class="nav-item-text">Tables</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Advanced</div>
+                    <a href="#" class="nav-item" data-section="tasks">
+                        <i data-feather="zap"></i>
+                        <span class="nav-item-text">Advanced Tasks</span>
+                    </a>
+                    <a href="#" class="nav-item" data-section="governance">
+                        <i data-feather="shield"></i>
+                        <span class="nav-item-text">Governance</span>
+                    </a>
+                </div>
+            </nav>
         </div>
-
-        <section id="db-config-section" class="border rounded mb-4">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step1">
-                <span>Step 1 — Connect to Database</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step1" class="p-4 space-y-4">
-            <form id="db-config-form" class="space-y-4">
-                <div><label for="db-driver" class="form-label">Driver:</label><input type="text" id="db-driver"
-                        name="driver" class="form-input" value="ODBC Driver 17 for SQL Server"></div>
-                <div> <label for="db-dialect" class="form-label">SQL Dialect:</label>
-                    <select id="db-dialect" name="dialect" class="form-input">
-                        <option value="SQL Server">Microsoft SQL Server (T-SQL)</option>
-                        <option value="PostgreSQL">PostgreSQL (PL/pgSQL)</option>
-                        <option value="MySQL">MySQL</option>
-                    </select>
+        
+        <!-- Main Content -->
+        <div class="settings-main">
+            <div class="settings-header">
+                <h1 class="settings-title" id="sectionTitle">General Settings</h1>
+                <a href="/" class="back-btn">
+                    <i data-feather="arrow-left" class="w-4 h-4"></i>
+                    <span>Back to Chat</span>
+                </a>
+            </div>
+            
+            <div class="settings-content">
+                <!-- General Settings -->
+                <div class="settings-section active" id="general">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="info" class="w-5 h-5"></i>
+                                Application Information
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Basic information about your AskLytics installation
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Version</label>
+                                <input type="text" class="form-input" value="3.1.0" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Environment</label>
+                                <input type="text" class="form-input" value="Development" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="users" class="w-5 h-5"></i>
+                                User Preferences
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Customize your user experience
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Chat Session Limit</label>
+                            <select class="form-select" id="chatLimit">
+                                <option value="5">5 sessions</option>
+                                <option value="10">10 sessions</option>
+                                <option value="25">25 sessions</option>
+                                <option value="50">50 sessions</option>
+                                <option value="100">100 sessions</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="autoSummarize">
+                                <span class="form-checkbox-label">Enable automatic summarization</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <div><label for="db-server" class="form-label">Server Address:</label><input type="text" id="db-server"
-                        name="server" class="form-input" placeholder="localhost" required></div>
-                <div><label for="db-name" class="form-label">Database Name:</label><input type="text" id="db-name"
-                        name="database" class="form-input" placeholder="AdventureWorks2017" required></div>
-                <div><label for="db-user" class="form-label">Username:</label><input type="text" id="db-user" name="uid"
-                        class="form-input" placeholder="sa" required></div>
-                <div><label for="db-password" class="form-label">Password:</label><input type="password"
-                        id="db-password" name="pwd" class="form-input" placeholder="Enter password"></div>
-                <div><label for="db-timeout" class="form-label">Timeout (s):</label><input type="number" id="db-timeout"
-                        name="timeout" class="form-input" value="30" min="5"></div>
-
-                <div class="flex space-x-3 pt-2">
-                    <button type="button" id="test-db-connection" class="btn btn-secondary"><i data-feather="zap"></i>
-                        Test</button>
-                    <button type="submit" id="save-db-connection" class="btn btn-primary"><i data-feather="save"></i>
-                        Save</button>
+                
+                <!-- Theme Settings -->
+                <div class="settings-section" id="theme">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="sun" class="w-5 h-5"></i>
+                                Application Theme
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Customize the look and feel of AskLytics
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Color Scheme</label>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <label class="form-checkbox" style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="theme" value="blue" style="margin-right: 0.75rem;">
+                                    <div>
+                                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Blue (Corporate)</div>
+                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Professional indigo color scheme</div>
+                                    </div>
+                                </label>
+                                <label class="form-checkbox" style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="theme" value="light-grey" style="margin-right: 0.75rem;">
+                                    <div>
+                                        <div style="font-weight: 600; margin-bottom: 0.25rem;">Light Grey</div>
+                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Subtle grey with slate accents</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="saveThemeBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Theme
+                            </button>
+                            <div id="themeStatus" class="text-sm"></div>
+                        </div>
+                    </div>
                 </div>
-            </form>
-            <div id="db-status-message" class="mt-4"></div>
-            <div class="mt-4">
-                <label class="form-label">Tables</label>
-                <div class="flex items-center gap-2 mb-2">
-                    <select id="table-filter" class="form-input" style="max-width:240px">
-                        <option value="all">Show: All Tables</option>
-                        <option value="selected">Show: Selected</option>
-                    </select>
-                    <button id="btn-select-all" class="btn btn-secondary" title="Select all tables">Select All</button>
-                    <button id="btn-deselect-all" class="btn btn-secondary" title="Deselect all tables">Deselect All</button>
-                    <button id="btn-refresh-tables" class="btn btn-secondary" title="Reload tables from DB">Refresh Tables</button>
+                
+                <!-- Inference Settings -->
+                <div class="settings-section" id="inference">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="cpu" class="w-5 h-5"></i>
+                                Model Configuration
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Configure AI models and inference settings
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Primary Model</label>
+                            <select class="form-select" id="inferenceMode">
+                                <option value="gemini">Gemini (Cloud)</option>
+                                <option value="sqlcoder">SQLCoder (Local)</option>
+                                <option value="hybrid">Hybrid (Gemini + SQLCoder)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Temperature</label>
+                            <input type="range" class="form-input" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                            <div class="text-sm text-gray-600 mt-1">Controls randomness in responses (current: <span id="tempValue">0.7</span>)</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="saveInferenceBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Inference Settings
+                            </button>
+                            <div id="inferenceStatus" class="text-sm"></div>
+                        </div>
+                    </div>
                 </div>
-                <div id="tables-container" style="max-height:260px; overflow:auto; border:1px solid #ddd; padding:8px;"></div>
-                <div class="mt-2">
-                    <button id="save-tables-btn" class="btn btn-primary"><i data-feather="save"></i> Save Selected Tables</button>
+                
+                <!-- Learning Settings -->
+                <div class="settings-section" id="learning">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="book" class="w-5 h-5"></i>
+                                Learning Configuration
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Configure the learning and feedback system
+                        </div>
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="autoLogLearning">
+                                <span class="form-checkbox-label">Enable automatic learning logging</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Learning Rate</label>
+                            <select class="form-select" id="learningRate">
+                                <option value="0.1">Low (0.1)</option>
+                                <option value="0.3">Medium (0.3)</option>
+                                <option value="0.5">High (0.5)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="saveLearningBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Learning Settings
+                            </button>
+                            <div id="learningStatus" class="text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Database Settings -->
+                <div class="settings-section" id="database">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="database" class="w-5 h-5"></i>
+                                Database Connection
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Configure and test your database connection
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Server / Host</label>
+                            <input type="text" class="form-input" id="dbHost" placeholder="localhost or server address">
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Database Name</label>
+                                <input type="text" class="form-input" id="dbName" placeholder="Database name">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Port (Optional)</label>
+                                <input type="text" class="form-input" id="dbPort" placeholder="1433">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-input" id="dbUsername" placeholder="Database username">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-input" id="dbPassword" placeholder="Database password">
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="testConnectionBtn">
+                                <i data-feather="check-circle" class="w-4 h-4"></i>
+                                Test Connection
+                            </button>
+                            <button class="btn btn-success" id="saveConnectionBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Connection
+                            </button>
+                            <div id="connectionStatus" class="text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="info" class="w-5 h-5"></i>
+                                Current Connection
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Active database connection information
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Current Database</label>
+                            <input type="text" class="form-input" id="currentDb" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Connection Status</label>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="text-sm text-gray-600">Connected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tables Settings -->
+                <div class="settings-section" id="tables">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="table" class="w-5 h-5"></i>
+                                Table Selection
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="btn btn-secondary btn-sm" id="selectAllTablesBtn">
+                                    <i data-feather="check-square" class="w-3 h-3"></i>
+                                    Select All
+                                </button>
+                                <span class="text-sm text-gray-600" id="selectedTableCount">0 selected</span>
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Choose which tables are available for queries
+                        </div>
+                        <div class="form-group">
+                            <div id="tablesList" class="space-y-2" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Tables will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="saveTablesBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Selection
+                            </button>
+                            <div id="tablesStatus" class="text-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Tasks -->
+                <div class="settings-section" id="tasks">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="zap" class="w-5 h-5"></i>
+                                Advanced Tasks
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Manual execution of backend operations
+                        </div>
+                        <div class="grid-2">
+                            <div class="space-y-3">
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Re-index Learning Data</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Rebuild FAISS index from experience store</p>
+                                    <button class="btn btn-warning btn-sm" id="manual-reindex">
+                                        <i data-feather="refresh-ccw" class="w-3 h-3"></i> Re-index Now
+                                    </button>
+                                    <div id="reindex-status" class="text-xs mt-2"></div>
+                                </div>
+                                
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Rebuild Knowledge Base</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Regenerate schema embeddings</p>
+                                    <button class="btn btn-success btn-sm" id="manual-rebuild-kb">
+                                        <i data-feather="database" class="w-3 h-3"></i> Rebuild KB
+                                    </button>
+                                    <div id="rebuild-kb-status" class="text-xs mt-2"></div>
+                                </div>
+                                
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Run Regression Tests</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Execute test suite for accuracy validation</p>
+                                    <button class="btn btn-primary btn-sm" id="manual-regression">
+                                        <i data-feather="play" class="w-3 h-3"></i> Run Tests
+                                    </button>
+                                    <div id="regression-status" class="text-xs mt-2"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Validate Experience Store</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Check experience store integrity</p>
+                                    <button class="btn btn-secondary btn-sm" id="manual-validate">
+                                        <i data-feather="check-circle" class="w-3 h-3"></i> Validate
+                                    </button>
+                                    <div id="validate-status" class="text-xs mt-2"></div>
+                                </div>
+                                
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Database Optimization</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Optimize database performance</p>
+                                    <button class="btn btn-secondary btn-sm" id="manual-optimize">
+                                        <i data-feather="activity" class="w-3 h-3"></i> Optimize
+                                    </button>
+                                    <div id="optimize-status" class="text-xs mt-2"></div>
+                                </div>
+                                
+                                <div class="border rounded-lg p-4">
+                                    <h4 class="font-medium text-sm mb-2">Generate Reports</h4>
+                                    <p class="text-xs text-gray-600 mb-3">Create system health reports</p>
+                                    <button class="btn btn-primary btn-sm" id="manual-reports">
+                                        <i data-feather="file-text" class="w-3 h-3"></i> Generate
+                                    </button>
+                                    <div id="reports-status" class="text-xs mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="terminal" class="w-5 h-5"></i>
+                                Task Execution Log
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Real-time status of background tasks
+                        </div>
+                        <div class="task-log" id="taskLog">
+                            <div class="log-entry">
+                                <span class="log-time">[Ready]</span>
+                                <span class="log-status">System ready for tasks</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Governance Settings -->
+                <div class="settings-section" id="governance">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="shield" class="w-5 h-5"></i>
+                                Security & Compliance
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Configure security policies and compliance settings
+                        </div>
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="piiMasking" checked>
+                                <span class="form-checkbox-label">Enable PII masking by default</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-checkbox">
+                                <input type="checkbox" id="auditLogging" checked>
+                                <span class="form-checkbox-label">Enable comprehensive audit logging</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Data Retention (days)</label>
+                            <input type="number" class="form-input" id="dataRetention" value="90" min="1" max="365">
+                            <div class="text-sm text-gray-600 mt-1">How long to keep audit logs and learning data</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button class="btn btn-primary" id="saveGovernanceBtn">
+                                <i data-feather="save" class="w-4 h-4"></i>
+                                Save Governance Settings
+                            </button>
+                            <div id="governanceStatus" class="text-sm"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            </div>
-        </section>
-
-        <section id="learning-step" class="border rounded mb-4">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step2">
-                <span>Step 2 — Auto-logging for Learning</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step2" class="p-4">
-                <div class="flex items-center gap-2 mb-3">
-                    <input id="auto-learn" type="checkbox" />
-                    <label for="auto-learn">Enable auto logging of queries for learning</label>
-                </div>
-                <button id="save-learning" class="btn btn-secondary"><i data-feather="save"></i> Save Learning Settings</button>
-                <button id="btn-reindex" class="btn btn-warning ml-2" title="Re-index now (learning)"><i data-feather="refresh-ccw"></i> Re-index</button>
-                <div id="learning-status" class="mt-3 text-sm text-gray-600"></div>
-            </div>
-        </section>
-
-        <section id="training-section" class="border rounded mb-4">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step3">
-                <span>Step 3 — Build Knowledge Base</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step3" class="p-4">
-            <p class="text-sm text-gray-600 mb-3">Build/rebuild schema embeddings for the currently saved database. This
-                may take time.</p>
-            <div class="flex space-x-3">
-                <button type="button" id="run-training-script" class="btn btn-success">
-                    <i data-feather="database" class="w-4 h-4"></i> Build/Rebuild Embeddings
-                </button>
-                <button type="button" id="reload-faiss-btn" class="btn btn-warning" style="display:none">
-                    <i data-feather="refresh-ccw" class="w-4 h-4"></i> Reload Knowledge Base
-                </button>
-            </div>
-            <div id="training-status-message" class="mt-4"></div>
-            <div id="reload-status-message" class="mt-2"></div>
-            </div>
-        </section>
-
-        <section id="harvest-section" class="border rounded mb-4">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step4">
-                <span>Step 4 — Metadata Harvest</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step4" class="p-4">
-                <p class="text-sm text-gray-600 mb-2">Pull metadata (assets/tables/columns) into the metadata store and make it searchable for the explorer.</p>
-                <div class="flex items-center gap-2 mb-3">
-                    <input id="harvest-q" type="text" class="form-input" placeholder="Search assets (q)..." style="max-width:260px" />
-                    <button id="btn-harvest-search" class="btn btn-secondary"><i data-feather="search"></i> Search</button>
-                    <button id="btn-harvest-sources" class="btn btn-secondary"><i data-feather="list"></i> List Sources</button>
-                    <button id="btn-harvest-run" class="btn btn-success"><i data-feather="play"></i> Harvest Metadata</button>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Bulk Upload (JSON array of {Asset, Columns} items)</label>
-                    <input id="harvest-file" type="file" accept="application/json" />
-                    <button id="btn-harvest-upload" class="btn btn-primary ml-2"><i data-feather="upload"></i> Upload</button>
-                </div>
-                <div id="harvest-status" class="text-sm text-gray-600 mb-2"></div>
-                <div id="harvest-results" class="text-sm" style="max-height:220px; overflow:auto; border:1px solid #e5e7eb; padding:.5rem"></div>
-            </div>
-        </section>
-
-        <section id="inference-section" class="border rounded mb-2">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step5">
-                <span>Step 5 — Model Selection</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step5" class="p-4 grid gap-3">
-                <div>
-                    <label class="form-label" for="inference-mode">Choose Model</label>
-                    <select id="inference-mode" class="form-input">
-                        <option value="gemini">Gemini 1.5 Flash</option>
-                        <option value="local">Local Model</option>
-                    </select>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input id="auto-summarize" type="checkbox" />
-                    <label for="auto-summarize">Auto generate business summaries after results</label>
-                </div>
-                <div>
-                    <button id="save-inference" class="btn btn-primary"><i data-feather="save"></i> Save</button>
-                </div>
-            </div>
-        </section>
-
-        <section id="ux-defaults" class="border rounded mb-8">
-            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step6">
-                <span>UX Defaults</span>
-                <i data-feather="chevron-down"></i>
-            </button>
-            <div id="step6" class="p-4 grid gap-3">
-                <div>
-                    <label class="form-label" for="default-mode">Default Mode</label>
-                    <select id="default-mode" class="form-input" style="max-width:220px">
-                        <option value="biz">Business</option>
-                        <option value="dev">Developer</option>
-                    </select>
-                </div>
-                <div>
-                    <button id="save-ux" class="btn btn-primary"><i data-feather="save"></i> Save UX Defaults</button>
-                </div>
-            </div>
-        </section>
+        </div>
     </div>
 
     <script>
-        feather.replace();
-        const dbConfigForm = document.getElementById('db-config-form');
-        const testDbBtn = document.getElementById('test-db-connection');
-        const dbStatusMsg = document.getElementById('db-status-message');
-        const runTrainingBtn = document.getElementById('run-training-script');
-        const trainingStatusMsg = document.getElementById('training-status-message');
-        const reloadFaissBtn = document.getElementById('reload-faiss-btn');
-        const reloadStatusMsg = document.getElementById('reload-status-message');
-        const reindexBtn = document.getElementById('btn-reindex');
-        const learningStatus = document.getElementById('learning-status');
-
-        // Accordion interactions
-        document.querySelectorAll('[data-acc="toggle"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const id = btn.getAttribute('aria-controls');
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.style.display = (el.style.display === 'none') ? '' : 'none';
-                feather.replace();
-            });
+        // Global state
+        let currentSection = 'general';
+        
+        // DOM elements
+        const navItems = document.querySelectorAll('.nav-item');
+        const sections = document.querySelectorAll('.settings-section');
+        const sectionTitle = document.getElementById('sectionTitle');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+            loadSettings();
         });
-
-        function showDbStatus(message, type = 'info') {
-            dbStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        
+        function initializeApp() {
+            // Initialize Feather icons
+            feather.replace();
         }
-        function showTrainingStatus(message, type = 'info') {
-            trainingStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        
+        function setupEventListeners() {
+            // Navigation
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.dataset.section;
+                    switchSection(section);
+                });
+            });
+            
+            // Advanced Tasks
+            setupAdvancedTasks();
         }
-        function showReloadStatus(message, type = 'info') {
-            reloadStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
+        
+        function switchSection(sectionName) {
+            // Update navigation
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === sectionName) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Update content
+            sections.forEach(section => {
+                section.classList.remove('active');
+                if (section.id === sectionName) {
+                    section.classList.add('active');
+                }
+            });
+            
+            // Update title
+            const titles = {
+                'general': 'General Settings',
+                'theme': 'Theme Settings',
+                'inference': 'Inference Settings',
+                'learning': 'Learning Settings',
+                'database': 'Database Settings',
+                'tables': 'Table Management',
+                'tasks': 'Advanced Tasks',
+                'governance': 'Security & Compliance'
+            };
+            sectionTitle.textContent = titles[sectionName] || 'Settings';
+            
+            currentSection = sectionName;
         }
-
-        async function loadCurrentDbConfig() {
-            showDbStatus('Loading current configuration...', 'info');
+        
+        function setupAdvancedTasks() {
+            // Re-index Learning Data
+            document.getElementById('manual-reindex').addEventListener('click', async () => {
+                await executeTask('manual-reindex', 'reindex-status', 'Re-index Learning Data', '/api/learn/reindex', 'POST');
+            });
+            
+            // Rebuild Knowledge Base
+            document.getElementById('manual-rebuild-kb').addEventListener('click', async () => {
+                await executeTask('manual-rebuild-kb', 'rebuild-kb-status', 'Rebuild Knowledge Base', '/api/training/run', 'POST');
+            });
+            
+            // Run Regression Tests
+            document.getElementById('manual-regression').addEventListener('click', async () => {
+                await executeTask('manual-regression', 'regression-status', 'Run Regression Tests', '/api/learn/regression/run', 'POST');
+            });
+            
+            // Validate Experience Store
+            document.getElementById('manual-validate').addEventListener('click', async () => {
+                await executeTask('manual-validate', 'validate-status', 'Validate Experience Store', '/api/learn/validate', 'POST');
+            });
+            
+            // Database Optimization
+            document.getElementById('manual-optimize').addEventListener('click', async () => {
+                await executeTask('manual-optimize', 'optimize-status', 'Database Optimization', '/api/db/optimize', 'POST');
+            });
+            
+            // Generate Reports
+            document.getElementById('manual-reports').addEventListener('click', async () => {
+                await executeTask('manual-reports', 'reports-status', 'Generate Reports', '/api/reports/generate', 'POST');
+            });
+        }
+        
+        async function executeTask(buttonId, statusId, taskName, endpoint, method) {
+            const button = document.getElementById(buttonId);
+            const status = document.getElementById(statusId);
+            
+            // Set loading state
+            button.disabled = true;
+            button.innerHTML = '<i data-feather="loader" class="w-3 h-3"></i> Running...';
+            feather.replace();
+            
+            setTaskStatus(statusId, 'loading', 'Running...');
+            logTask(taskName, 'loading', 'Starting task...');
+            
             try {
-                const res = await fetch('/api/settings/db/current');
-                const config = await res.json();
-                if (res.ok && config && config.database) {
-                    document.getElementById('db-driver').value = config.driver || 'ODBC Driver 17 for SQL Server';
-                    document.getElementById('db-server').value = config.server || '';
-                    document.getElementById('db-name').value = config.database || '';
-                    document.getElementById('db-user').value = config.uid || '';
-                    document.getElementById('db-password').value = '';
-                    document.getElementById('db-timeout').value = config.timeout || 30;
-                    showDbStatus(`Loaded config for '${config.database}'. You can test or modify.`, 'success');
+                const response = await fetch(endpoint, { method });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    setTaskStatus(statusId, 'success', 'Completed successfully');
+                    logTask(taskName, 'success', `Task completed: ${result.message || 'Success'}`);
                 } else {
-                    showDbStatus(config.message || 'No active configuration. Please enter new details.', 'info');
+                    const errorMsg = result.error?.message || result.error || 'Task failed';
+                    setTaskStatus(statusId, 'error', `Error: ${errorMsg}`);
+                    logTask(taskName, 'error', errorMsg);
                 }
             } catch (error) {
-                console.error("Error loading current DB config for form:", error);
-                showDbStatus('Error loading config. Please enter new details.', 'danger');
+                const errorMsg = error.message || error.toString() || 'Unknown error';
+                setTaskStatus(statusId, 'error', `Error: ${errorMsg}`);
+                logTask(taskName, 'error', errorMsg);
+            } finally {
+                // Reset button
+                button.disabled = false;
+                const originalText = buttonId === 'manual-reindex' ? 'Re-index Now' :
+                                   buttonId === 'manual-rebuild-kb' ? 'Rebuild KB' :
+                                   buttonId === 'manual-regression' ? 'Run Tests' :
+                                   buttonId === 'manual-validate' ? 'Validate' :
+                                   buttonId === 'manual-optimize' ? 'Optimize' :
+                                   'Generate';
+                button.innerHTML = `<i data-feather="${buttonId === 'manual-reindex' ? 'refresh-ccw' : 
+                                                      buttonId === 'manual-rebuild-kb' ? 'database' :
+                                                      buttonId === 'manual-regression' ? 'play' :
+                                                      buttonId === 'manual-validate' ? 'check-circle' :
+                                                      buttonId === 'manual-optimize' ? 'activity' :
+                                                      'file-text'}" class="w-3 h-3"></i> ${originalText}`;
+                feather.replace();
             }
         }
-        window.addEventListener('DOMContentLoaded', () => {
-            feather.replace();
-            loadCurrentDbConfig();
-        });
-
-        testDbBtn.addEventListener('click', async () => {
-            const fd = new FormData(dbConfigForm); const details = Object.fromEntries(fd.entries());
-            details.timeout = parseInt(details.timeout, 10);
-            showDbStatus('Testing... <i data-feather="loader" class="animate-spin"></i>', 'info'); testDbBtn.disabled = true;
-            try {
-                const res = await fetch('/api/settings/db/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) });
-                const result = await res.json();
-                showDbStatus(result.message, result.status === 'success' ? 'success' : 'danger');
-            } catch (e) { showDbStatus(`Error: ${e.message}`, 'danger'); }
-            finally { testDbBtn.disabled = false; feather.replace(); }
-        });
-
-        dbConfigForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fd = new FormData(dbConfigForm); const details = Object.fromEntries(fd.entries());
-            details.timeout = parseInt(details.timeout, 10);
-            showDbStatus('Saving... <i data-feather="loader" class="animate-spin"></i>', 'info');
-            const saveBtn = dbConfigForm.querySelector('button[type="submit"]');
-            saveBtn.disabled = true; testDbBtn.disabled = true;
-            try {
-                const res = await fetch('/api/settings/db/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details) });
-                const result = await res.json();
-                showDbStatus(result.message, result.status === 'success' ? 'success' : 'danger');
-                if (result.status === 'success') {
-                    showTrainingStatus('Configuration saved. Build embeddings for this database configuration if this is a new setup or if the schema has changed.', 'info');
-                }
-            } catch (e) { showDbStatus(`Error: ${e.message}`, 'danger'); }
-            finally { saveBtn.disabled = false; testDbBtn.disabled = false; feather.replace(); }
-        });
-
-        runTrainingBtn.addEventListener('click', async () => {
-            showTrainingStatus('Initiating build... <i data-feather="loader" class="animate-spin"></i> This may take some time. Check server logs.', 'info');
-            runTrainingBtn.disabled = true; reloadFaissBtn.disabled = true;
-            try {
-                const res = await fetch('/api/training/run', { method: 'POST' });
-                const result = await res.json();
-                showTrainingStatus(result.message, (res.status === 202 || result.status === 'success') ? 'info' : 'danger');
-                if (res.status === 202 || result.status === 'success') { // Accepted/background
-                    showReloadStatus('Training initiated/completed. Reload Knowledge Base for changes to take effect in the chat.', 'info');
-                    reloadFaissBtn.style.display = '';
-                } else { reloadFaissBtn.style.display = 'none'; }
-            } catch (e) { showTrainingStatus(`Error initiating training: ${e.message}`, 'danger'); }
-            finally { runTrainingBtn.disabled = false; reloadFaissBtn.disabled = false; feather.replace(); }
-        });
-
-        reloadFaissBtn.addEventListener('click', async () => {
-            showReloadStatus('Reloading Knowledge Base... <i data-feather="loader" class="animate-spin"></i>', 'info');
-            reloadFaissBtn.disabled = true; runTrainingBtn.disabled = true;
-            try {
-                const res = await fetch('/api/faiss/reload', { method: 'POST' });
-                const result = await res.json();
-                showReloadStatus(result.message, result.status === 'success' ? 'success' : 'danger');
-            } catch (e) { showReloadStatus(`Error: ${e.message}`, 'danger'); }
-            finally { reloadFaissBtn.disabled = false; runTrainingBtn.disabled = false; feather.replace(); }
-        });
-        reindexBtn.addEventListener('click', async ()=>{
-            learningStatus.textContent = 'Re-index requested...';
-            reindexBtn.disabled = true;
-            try{
-                const r = await fetch('/api/learn/reindex', { method:'POST' });
-                const j = await r.json();
-                learningStatus.textContent = (j && j.message) ? j.message : 'Re-index requested.';
-            }catch(e){ learningStatus.textContent = 'Failed: ' + e.message; }
-            finally{ reindexBtn.disabled = false; }
-        });
-        //naveed edited
-        async function fetchWithTimeout(url, options = {}, ms = 10000) {
-            const c = new AbortController();
-            const id = setTimeout(() => c.abort(), ms);
-            try { return await fetch(url, { ...options, signal: c.signal }); }
-            finally { clearTimeout(id); }
+        
+        function setTaskStatus(statusId, status, message) {
+            const statusEl = document.getElementById(statusId);
+            statusEl.className = `task-status ${status}`;
+            statusEl.textContent = message;
         }
-
-        dbConfigForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fd = new FormData(dbConfigForm);
-            const details = Object.fromEntries(fd.entries());
-            details.timeout = parseInt(details.timeout, 10);
-
-            showDbStatus('Saving... <i data-feather="loader" class="animate-spin"></i>', 'info');
-            const saveBtn = dbConfigForm.querySelector('button[type="submit"]');
-            saveBtn.disabled = true; testDbBtn.disabled = true;
-
+        
+        function logTask(taskName, status, message) {
+            const log = document.getElementById('taskLog');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-status ${status}">${taskName}: ${message}</span>
+            `;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        async function loadSettings() {
             try {
-                const res = await fetchWithTimeout('/api/settings/db/save', {
+                // Load theme setting
+                try {
+                    const currentTheme = localStorage.getItem('theme') || 'blue';
+                    document.querySelectorAll('input[name="theme"]').forEach(r => {
+                        r.checked = (r.value === currentTheme);
+                    });
+                } catch (e) {
+                    console.warn('Theme loading failed:', e);
+                }
+                
+                // Load chat limit
+                const chatLimitResponse = await fetch('/api/config/chat_limit');
+                const chatLimitData = await chatLimitResponse.json();
+                document.getElementById('chatLimit').value = chatLimitData.limit || 5;
+                
+                // Load auto summarize
+                const autoSumResponse = await fetch('/api/settings/auto_summarize');
+                const autoSumData = await autoSumResponse.json();
+                document.getElementById('autoSummarize').checked = autoSumData.auto_summarize || false;
+                
+                // Load inference mode
+                const inferenceResponse = await fetch('/api/settings/inference');
+                const inferenceData = await inferenceResponse.json();
+                document.getElementById('inferenceMode').value = inferenceData.inference_mode || 'gemini';
+                
+                // Load learning settings
+                const learningResponse = await fetch('/api/settings/learning');
+                const learningData = await learningResponse.json();
+                document.getElementById('autoLogLearning').checked = learningData.auto_log_learning || false;
+                
+                // Load database info
+                const dbResponse = await fetch('/api/settings/db/current');
+                const dbData = await dbResponse.json();
+                document.getElementById('currentDb').value = dbData.database || 'Unknown';
+                
+                // Load tables with checkboxes
+                await loadTablesWithSelection();
+                
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+        
+        async function loadTablesWithSelection() {
+            try {
+                const tablesResponse = await fetch('/api/settings/tables/list');
+                const tablesData = await tablesResponse.json();
+                const tablesList = document.getElementById('tablesList');
+                tablesList.innerHTML = '';
+                
+                if (tablesData.tables && tablesData.tables.length > 0) {
+                    tablesData.tables.forEach(table => {
+                        const tableItem = document.createElement('label');
+                        tableItem.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100';
+                        tableItem.innerHTML = `
+                            <input type="checkbox" name="table" value="${table}" class="table-check w-4 h-4 accent-indigo-600">
+                            <span class="text-sm font-medium">${table}</span>
+                        `;
+                        tablesList.appendChild(tableItem);
+                    });
+                    
+                    // Add event listeners to update count
+                    const checkboxes = tablesList.querySelectorAll('.table-check');
+                    checkboxes.forEach(cb => {
+                        cb.checked = true; // Select all by default
+                        cb.addEventListener('change', updateSelectedCount);
+                    });
+                    
+                    updateSelectedCount();
+                } else {
+                    tablesList.innerHTML = '<p class="text-sm text-gray-500">No tables available</p>';
+                }
+            } catch (error) {
+                console.error('Error loading tables:', error);
+            }
+        }
+        
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.table-check:checked');
+            document.getElementById('selectedTableCount').textContent = `${checkboxes.length} selected`;
+        }
+        
+        // Select/Deselect all tables
+        document.getElementById('selectAllTablesBtn').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('.table-check');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+            
+            this.innerHTML = allChecked ? 
+                '<i data-feather="check-square" class="w-3 h-3"></i> Select All' :
+                '<i data-feather="square" class="w-3 h-3"></i> Deselect All';
+            feather.replace();
+            updateSelectedCount();
+        });
+        
+        // Temperature slider update
+        document.getElementById('temperature').addEventListener('input', function() {
+            document.getElementById('tempValue').textContent = this.value;
+        });
+        
+        // Save Inference Settings
+        // Theme save handler
+        document.getElementById('saveThemeBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('themeStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+            feather.replace();
+            
+            try {
+                const selectedTheme = document.querySelector('input[name="theme"]:checked')?.value || 'blue';
+                localStorage.setItem('theme', selectedTheme);
+                document.documentElement.classList.toggle('light-grey', selectedTheme === 'light-grey');
+                
+                statusEl.className = 'text-sm text-green-600';
+                statusEl.textContent = '✓ Theme saved successfully!';
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Error saving theme';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Theme';
+                feather.replace();
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        });
+        
+        document.getElementById('saveInferenceBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('inferenceStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+            feather.replace();
+            
+            try {
+                const response = await fetch('/api/settings/inference', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(details)
-                }, 10000);
-
-                const result = await res.json().catch(() => ({ message: 'Saved' }));
-                showDbStatus(result.message || 'Saved. Pool is initializing in background.', 'success');
-                showTrainingStatus('Next: Build embeddings if schema changed.', 'info');
-            } catch (e) {
-                const msg = e.name === 'AbortError'
-                    ? 'Saving is taking longer than expected. Settings saved; pool will continue initializing in background.'
-                    : `Error: ${e.message}`;
-                showDbStatus(msg, e.name === 'AbortError' ? 'info' : 'danger');
-            } finally {
-                saveBtn.disabled = false; testDbBtn.disabled = false; feather.replace();
-            }
-        });
-
-        // Load all available tables and mark previously saved selections.
-        async function loadTables() {
-            const res = await fetch('/api/settings/tables/list');
-            const json = await res.json();
-            const cont = document.getElementById('tables-container');
-            cont.innerHTML = '';
-            const selected = new Set(json.selected || []);
-            (json.tables || []).forEach(t => {
-                const id = 'tbl_' + t.replace(/\W/g,'_');
-                cont.insertAdjacentHTML('beforeend', `
-                <label style="display:block">
-                    <input type="checkbox" id="${id}" value="${t}" ${selected.has(t) ? 'checked' : ''}/>
-                    ${t}
-                </label>
-                `);
-            });
-            // Apply filter view
-            applyTableFilter();
-        }
-        function applyTableFilter(){
-            const mode = (document.getElementById('table-filter')?.value)||'all';
-            const boxes = [...document.querySelectorAll('#tables-container input[type=checkbox]')];
-            boxes.forEach(b=>{
-                const show = (mode==='all') || (mode==='selected' && b.checked);
-                const row = b.closest('label');
-                if (row) row.style.display = show ? 'block' : 'none';
-            });
-        }
-        document.getElementById('table-filter').addEventListener('change', applyTableFilter);
-        document.getElementById('btn-select-all').addEventListener('click', ()=>{
-            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=true);
-        });
-        document.getElementById('btn-deselect-all').addEventListener('click', ()=>{
-            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=false);
-        });
-        document.getElementById('btn-refresh-tables').addEventListener('click', loadTables);
-
-        // Persist user-selected tables for training/indexing filter
-        document.getElementById('save-tables-btn').addEventListener('click', async () => {
-        const boxes = [...document.querySelectorAll('#tables-container input[type=checkbox]')];
-        const chosen = boxes.filter(b => b.checked).map(b => b.value);
-        const res = await fetch('/api/settings/tables/save', {
-            method:'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ tables: chosen })
-        });
-        const out = await res.json();
-        alert(out.status === 'success' ? `Saved ${out.count} tables.` : 'Save failed.');
-        });
-
-        // Load table list on page open
-        loadTables();
-
-        // Inference settings
-        async function loadInference() {
-            try {
-                const r = await fetch('/api/settings/inference');
-                const j = await r.json();
-                document.getElementById('inference-mode').value = (j && j.inference) || 'gemini';
-            } catch (e) {}
-        }
-        document.getElementById('save-inference').addEventListener('click', async () => {
-            const val = document.getElementById('inference-mode').value;
-            try {
-                await fetch('/api/settings/inference', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ inference: val }) });
-                alert('Inference mode saved.');
-            } catch (e) {
-                alert('Failed to save inference mode.');
-            }
-            try {
-                const autoSum = document.getElementById('auto-summarize').checked;
-                await fetch('/api/settings/auto_summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_summarize: autoSum }) });
-            } catch (e) {}
-        });
-
-        // Learning settings
-        async function loadLearning() {
-            try {
-                const r = await fetch('/api/settings/learning');
-                const j = await r.json();
-                document.getElementById('auto-learn').checked = !!(j && j.auto_log_learning);
-            } catch (e) {}
-            try {
-                const r2 = await fetch('/api/settings/auto_summarize');
-                const j2 = await r2.json();
-                document.getElementById('auto-summarize').checked = !!(j2 && j2.auto_summarize);
-            } catch (e) {}
-        }
-        document.getElementById('save-learning').addEventListener('click', async () => {
-            const enabled = document.getElementById('auto-learn').checked;
-            try {
-                await fetch('/api/settings/learning', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_log_learning: enabled }) });
-                alert('Learning setting saved.');
-            } catch (e) {
-                alert('Failed to save learning setting.');
-            }
-        });
-
-        // Harvest
-        const harvestStatus = document.getElementById('harvest-status');
-        function setHarvest(msg){ harvestStatus.textContent = msg; }
-        document.getElementById('btn-harvest-sources').addEventListener('click', async ()=>{
-            setHarvest('Loading sources...');
-            try{ const r = await fetch('/api/metadata/sources'); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Failed to load sources'); }
-        });
-        document.getElementById('btn-harvest-search').addEventListener('click', async ()=>{
-            const q = (document.getElementById('harvest-q').value||'').trim(); setHarvest('Searching...');
-            try{ const r = await fetch(`/api/metadata/assets?q=${encodeURIComponent(q)}&limit=50`); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Search failed'); }
-        });
-        document.getElementById('btn-harvest-upload').addEventListener('click', async ()=>{
-            const f = document.getElementById('harvest-file').files[0]; if(!f){ alert('Please choose a JSON file.'); return; }
-            try{ const txt = await f.text(); const payload = JSON.parse(txt); setHarvest('Uploading...'); const r = await fetch('/api/metadata/bulk_upsert', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const j = await r.json(); setHarvest(`Upserted: ${j.upserted}`); }catch(e){ setHarvest('Upload failed'); }
-        });
-
-        // Run server-side harvest (existing endpoint expected)
-        document.getElementById('btn-harvest-run').addEventListener('click', async ()=>{
-            setHarvest('Harvesting...');
-            try{
-                const resp = await fetch('/api/metadata/harvest', { method:'POST' });
-                if(resp.status === 404){ setHarvest('Harvest endpoint not found.'); return; }
-                const j = await resp.json().catch(()=>({status:'ok'}));
-                setHarvest(j.message || 'Harvest requested.');
-            }catch(e){ setHarvest('Harvest failed'); }
-        });
-
-        loadInference();
-        loadLearning();
-        // default collapse all but first
-        ['step2','step3','step4','step5','step6'].forEach(id=>{ const el = document.getElementById(id); if (el) el.style.display='none'; });
-
-        // UX defaults persistence via localStorage
-        const LS_MODE_KEY = 'asklytics_ui_mode';
-        (function initUx(){ const m = localStorage.getItem(LS_MODE_KEY)||'biz'; const sel = document.getElementById('default-mode'); if(sel) sel.value = m; })();
-        document.getElementById('save-ux').addEventListener('click', ()=>{
-            const m = document.getElementById('default-mode').value; localStorage.setItem(LS_MODE_KEY, m); alert('Saved default UI mode.');
-        });
-
-        // Chat session limit setting
-        (async function loadChatLimit(){
-            try{ const r = await fetch('/api/config/chat_limit'); const j = await r.json();
-                const input = document.createElement('div');
-                input.innerHTML = '<label class="form-label" for="chat-limit">Chat Sessions Limit</label><input id="chat-limit" type="number" min="1" max="50" class="form-input" style="max-width:160px" /> <button id="save-chat-limit" class="btn btn-primary" style="margin-left:.5rem"><i data-feather="save"></i> Save</button>';
-                document.getElementById('ux-defaults').querySelector('#step6').appendChild(input);
-                document.getElementById('chat-limit').value = (j && j.chat_session_limit) || 5;
-                document.getElementById('save-chat-limit').addEventListener('click', async ()=>{
-                    const v = parseInt(document.getElementById('chat-limit').value, 10);
-                    try{ await fetch('/api/config/chat_limit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chat_session_limit: v }) }); alert('Saved chat session limit.'); }catch(e){ alert('Failed to save chat session limit'); }
+                    body: JSON.stringify({
+                        inference_mode: document.getElementById('inferenceMode').value,
+                        temperature: parseFloat(document.getElementById('temperature').value)
+                    })
                 });
+                
+                if (response.ok) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = '✓ Settings saved successfully!';
+                    // Keep the values - they're already set in the UI
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = '✗ Failed to save settings';
+                }
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Error saving settings';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
                 feather.replace();
-            }catch(e){}
-        })();
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        });
+        
+        // Save Learning Settings
+        document.getElementById('saveLearningBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('learningStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+            feather.replace();
+            
+            try {
+                const response = await fetch('/api/settings/learning', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        auto_log_learning: document.getElementById('autoLogLearning').checked,
+                        learning_rate: parseFloat(document.getElementById('learningRate').value)
+                    })
+                });
+                
+                if (response.ok) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = '✓ Settings saved successfully!';
+                    // Keep the values - they're already set in the UI
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = '✗ Failed to save settings';
+                }
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Error saving settings';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Learning Settings';
+                feather.replace();
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        });
+        
+        // Save Governance Settings
+        document.getElementById('saveGovernanceBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('governanceStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+            feather.replace();
+            
+            try {
+                const response = await fetch('/api/settings/governance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pii_masking: document.getElementById('piiMasking').checked,
+                        audit_logging: document.getElementById('auditLogging').checked,
+                        data_retention: parseInt(document.getElementById('dataRetention').value)
+                    })
+                });
+                
+                if (response.ok) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = '✓ Settings saved successfully!';
+                    // Keep the values - they're already set in the UI
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = '✗ Failed to save settings';
+                }
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Error saving settings';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Governance Settings';
+                feather.replace();
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        });
+        
+        // Save table selection
+        document.getElementById('saveTablesBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('tablesStatus');
+            try {
+                const checkboxes = document.querySelectorAll('.table-check:checked');
+                const selectedTables = Array.from(checkboxes).map(cb => cb.value);
+                
+                const response = await fetch('/api/settings/tables/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tables: selectedTables })
+                });
+                
+                if (response.ok) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = 'Table selection saved successfully!';
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = 'Failed to save selection';
+                }
+                
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = 'Error saving selection';
+            }
+        });
+        
+        // Test database connection
+        document.getElementById('testConnectionBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('connectionStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Testing...';
+            feather.replace();
+            
+            try {
+                const connectionData = {
+                    host: document.getElementById('dbHost').value,
+                    database: document.getElementById('dbName').value,
+                    port: document.getElementById('dbPort').value,
+                    username: document.getElementById('dbUsername').value,
+                    password: document.getElementById('dbPassword').value
+                };
+                
+                const response = await fetch('/api/settings/db/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(connectionData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = '✓ Connection successful!';
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = `✗ Connection failed: ${result.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Connection test failed';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="check-circle" class="w-4 h-4"></i> Test Connection';
+                feather.replace();
+                setTimeout(() => { statusEl.textContent = ''; }, 5000);
+            }
+        });
+        
+        // Save database connection
+        document.getElementById('saveConnectionBtn').addEventListener('click', async function() {
+            const statusEl = document.getElementById('connectionStatus');
+            const btn = this;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+            feather.replace();
+            
+            try {
+                const connectionData = {
+                    host: document.getElementById('dbHost').value,
+                    database: document.getElementById('dbName').value,
+                    port: document.getElementById('dbPort').value,
+                    username: document.getElementById('dbUsername').value,
+                    password: document.getElementById('dbPassword').value
+                };
+                
+                const response = await fetch('/api/settings/db/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(connectionData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    statusEl.className = 'text-sm text-green-600';
+                    statusEl.textContent = '✓ Connection saved successfully!';
+                } else {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = `✗ Save failed: ${result.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = '✗ Failed to save connection';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Connection';
+                feather.replace();
+                setTimeout(() => { statusEl.textContent = ''; }, 5000);
+            }
+        });
     </script>
 </body>
-
 </html>

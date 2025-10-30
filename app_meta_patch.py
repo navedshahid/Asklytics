@@ -68,7 +68,7 @@ class AppMetaPatch:
                 SessionLocal as MetaSession,
                 init_db as meta_init_db,
                 get_asset_detail, publish_event, upsert_asset, upsert_columns,
-                search_assets, Asset
+                search_assets, Asset, ColumnDef
             )
             self.MetaSession = MetaSession
             self.meta_init_db = meta_init_db
@@ -78,6 +78,7 @@ class AppMetaPatch:
             self.upsert_columns = upsert_columns
             self.search_assets = search_assets
             self.Asset = Asset
+            self.ColumnDef = ColumnDef
             self._store_loaded = True
         except Exception as e:
             self.MetaSession = None
@@ -87,6 +88,7 @@ class AppMetaPatch:
             self.upsert_asset = None
             self.upsert_columns = None
             self.search_assets = None
+            self.ColumnDef = None
             self.logger.warning(f"[meta] metadata_store not available: {e}")
 
         try:
@@ -196,6 +198,56 @@ class AppMetaPatch:
             except Exception:
                 continue
         return out
+
+    def _split_identifier(self, identifier: str) -> T.Tuple[T.Optional[str], str]:
+        ident = (identifier or "").strip()
+        if not ident:
+            return None, ""
+        ident = re.sub(r"[\[\]]", "", ident)
+        if "." in ident:
+            schema, table = ident.split(".", 1)
+            schema = schema.strip() or None
+            return schema, table.strip()
+        return None, ident.strip()
+
+    def get_pii_map(self, tables: T.Iterable[str]) -> T.Dict[str, T.Set[str]]:
+        """Return a map of table -> set(columns) flagged as PII."""
+
+        if not tables:
+            return {}
+        if not (self._store_loaded and self.MetaSession and getattr(self, "ColumnDef", None)):
+            return {}
+        result: T.Dict[str, T.Set[str]] = {}
+        try:
+            with self.MetaSession() as session:  # type: ignore[attr-defined]
+                for identifier in tables:
+                    schema, table = self._split_identifier(identifier)
+                    if not table:
+                        continue
+                    qry = session.query(self.Asset).filter(self.Asset.ObjectName.ilike(table))  # type: ignore[attr-defined]
+                    if schema:
+                        qry = qry.filter(self.Asset.SchemaName.ilike(schema))  # type: ignore[attr-defined]
+                    asset = qry.order_by(self.Asset.UpdatedAt.desc()).first()
+                    if not asset:
+                        continue
+                    rows = (
+                        session.query(self.ColumnDef.ColumnName)  # type: ignore[attr-defined]
+                        .filter(self.ColumnDef.AssetId == asset.AssetId)  # type: ignore[attr-defined]
+                        .filter(self.ColumnDef.IsPII.is_(True))  # type: ignore[attr-defined]
+                        .all()
+                    )
+                    if not rows:
+                        continue
+                    col_set = {str(r[0]).strip().lower() for r in rows if r and r[0]}
+                    if not col_set:
+                        continue
+                    key_with_schema = f"{(asset.SchemaName or '').strip().lower()}.{asset.ObjectName.strip().lower()}".strip(".")
+                    if key_with_schema:
+                        result[key_with_schema] = col_set
+                    result[asset.ObjectName.strip().lower()] = col_set
+        except Exception:
+            return {}
+        return result
 
     def _sqlite_path_from_env(self) -> str:
         db_url = os.getenv("META_DB_URL", "sqlite:///./metadata.db")
@@ -361,8 +413,11 @@ class AppMetaPatch:
 
         # 2) Register the metadata blueprint (search, detail, bulk_upsert, events)
         if self._routes_loaded and self.metadata_bp:
-            self.app.register_blueprint(self.metadata_bp)
-            self.logger.info("[meta] Registered /api/metadata/* endpoints.")
+            try:
+                self.app.register_blueprint(self.metadata_bp, name='metadata_routes')
+                self.logger.info("[meta] Registered /api/metadata/* endpoints.")
+            except ValueError as e:
+                self.logger.warning(f"[meta] Blueprint already registered: {e}")
 
         # 3) (Already registered above) HARVEST endpoint
 
@@ -1112,7 +1167,7 @@ class AppMetaPatch:
                 self.logger.error(f"[meta] BKG export failed: {e}", exc_info=True)
                 return jsonify({"error": str(e)}), 500
 
-        self.app.register_blueprint(bp)
+        self.app.register_blueprint(bp, name="meta_patch")
         self.logger.info("[meta] Registered /api/metadata/harvest")
 
     # ---------- Internal: FAISS + embeddings ----------

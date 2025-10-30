@@ -4,7 +4,10 @@ import logging
 from datetime import datetime
 from typing import List, Tuple
 
-from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
+except ImportError:
+    BackgroundScheduler = None
 
 from . import experience_store as xp
 from .embedder import build_faiss_index

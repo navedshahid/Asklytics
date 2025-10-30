@@ -139,14 +139,23 @@
 
 <body>
     <div class="container">
-        <div class="text-center mb-8">
-            <a href="/" class="text-sm text-blue-600 hover:underline"><i data-feather="arrow-left"
-                    class="inline-block w-4 h-4"></i> Back to Chat</a>
-            <h1 class="text-3xl font-semibold mt-2">Analytica AI Settings</h1>
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3 text-sm">
+                <a href="/metadata" class="text-blue-600 hover:underline">Meta Data Explorer</a>
+                <span>·</span>
+                <a href="/dashboard" class="text-blue-600 hover:underline">Dashboard</a>
+                <span>·</span>
+                <a href="/" class="text-blue-600 hover:underline">Main Chat Window</a>
+            </div>
+            <h1 class="text-2xl font-semibold">Settings</h1>
         </div>
 
-        <section id="db-config-section">
-            <h2 class="text-xl font-medium mb-4">Database Connection</h2>
+        <section id="db-config-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step1">
+                <span>Step 1 — Connect to Database</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step1" class="p-4 space-y-4">
             <form id="db-config-form" class="space-y-4">
                 <div><label for="db-driver" class="form-label">Driver:</label><input type="text" id="db-driver"
                         name="driver" class="form-input" value="ODBC Driver 17 for SQL Server"></div>
@@ -176,31 +185,285 @@
                 </div>
             </form>
             <div id="db-status-message" class="mt-4"></div>
+            <div class="mt-4">
+                <label class="form-label">Tables</label>
+                <div class="flex items-center gap-2 mb-2">
+                    <select id="table-filter" class="form-input" style="max-width:240px">
+                        <option value="all">Show: All Tables</option>
+                        <option value="selected">Show: Selected</option>
+                    </select>
+                    <button id="btn-select-all" class="btn btn-secondary" title="Select all tables">Select All</button>
+                    <button id="btn-deselect-all" class="btn btn-secondary" title="Deselect all tables">Deselect All</button>
+                    <button id="btn-refresh-tables" class="btn btn-secondary" title="Reload tables from DB">Refresh Tables</button>
+                </div>
+                <div id="tables-container" style="max-height:260px; overflow:auto; border:1px solid #ddd; padding:8px;"></div>
+                <div class="mt-2">
+                    <button id="save-tables-btn" class="btn btn-primary"><i data-feather="save"></i> Save Selected Tables</button>
+                </div>
+            </div>
+            </div>
         </section>
 
+        <section id="learning-step" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step2">
+                <span>Step 2 — Auto-logging for Learning</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step2" class="p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <input id="auto-learn" type="checkbox" />
+                    <label for="auto-learn">Enable auto logging of queries for learning</label>
+                </div>
+                <button id="save-learning" class="btn btn-secondary"><i data-feather="save"></i> Save Learning Settings</button>
+                <button id="btn-reindex" class="btn btn-warning ml-2" title="Re-index now (learning)"><i data-feather="refresh-ccw"></i> Re-index</button>
+                <div id="learning-status" class="mt-3 text-sm text-gray-600"></div>
+            </div>
+        </section>
 
-        <div class="section-divider"></div>
-
-        <section id="training-section">
-            <h2 class="text-xl font-medium mb-4">Knowledge Base</h2>
+        <section id="training-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step3">
+                <span>Step 3 — Build Knowledge Base</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step3" class="p-4">
             <p class="text-sm text-gray-600 mb-3">Build/rebuild schema embeddings for the currently saved database. This
                 may take time.</p>
             <div class="flex space-x-3">
                 <button type="button" id="run-training-script" class="btn btn-success">
                     <i data-feather="database" class="w-4 h-4"></i> Build/Rebuild Embeddings
                 </button>
-                <button type="button" id="reload-faiss-btn" class="btn btn-warning">
+                <button type="button" id="reload-faiss-btn" class="btn btn-warning" style="display:none">
                     <i data-feather="refresh-ccw" class="w-4 h-4"></i> Reload Knowledge Base
                 </button>
             </div>
             <div id="training-status-message" class="mt-4"></div>
             <div id="reload-status-message" class="mt-2"></div>
+            </div>
         </section>
 
-        <section style="margin-top:24px">
-            <h3>Select tables to include</h3>
-            <div id="tables-container" style="max-height:260px; overflow:auto; border:1px solid #ddd; padding:8px;"></div>
-            <button id="save-tables-btn">Save Selected Tables</button>
+        <section id="harvest-section" class="border rounded mb-4">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step4">
+                <span>Step 4 — Metadata Harvest</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step4" class="p-4">
+                <p class="text-sm text-gray-600 mb-2">Pull metadata (assets/tables/columns) into the metadata store and make it searchable for the explorer.</p>
+                <div class="flex items-center gap-2 mb-3">
+                    <input id="harvest-q" type="text" class="form-input" placeholder="Search assets (q)..." style="max-width:260px" />
+                    <button id="btn-harvest-search" class="btn btn-secondary"><i data-feather="search"></i> Search</button>
+                    <button id="btn-harvest-sources" class="btn btn-secondary"><i data-feather="list"></i> List Sources</button>
+                    <button id="btn-harvest-run" class="btn btn-success"><i data-feather="play"></i> Harvest Metadata</button>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bulk Upload (JSON array of {Asset, Columns} items)</label>
+                    <input id="harvest-file" type="file" accept="application/json" />
+                    <button id="btn-harvest-upload" class="btn btn-primary ml-2"><i data-feather="upload"></i> Upload</button>
+                </div>
+                <div id="harvest-status" class="text-sm text-gray-600 mb-2"></div>
+                <div id="harvest-results" class="text-sm" style="max-height:220px; overflow:auto; border:1px solid #e5e7eb; padding:.5rem"></div>
+            </div>
+        </section>
+
+        <section id="inference-section" class="border rounded mb-2">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step5">
+                <span>Step 5 — Model Selection</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step5" class="p-4 grid gap-3">
+                <div>
+                    <label class="form-label" for="inference-mode">Choose Model</label>
+                    <select id="inference-mode" class="form-input">
+                        <option value="gemini">Gemini + SQLCoder (Hybrid)</option>
+                        <option value="local">SQLCoder (Local Only)</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="auto-summarize" type="checkbox" />
+                    <label for="auto-summarize">Auto generate business summaries after results</label>
+                </div>
+                <div>
+                    <button id="save-inference" class="btn btn-primary"><i data-feather="save"></i> Save</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="ux-defaults" class="border rounded mb-8">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="step6">
+                <span>UX Defaults</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="step6" class="p-4 grid gap-3">
+                <div>
+                    <label class="form-label" for="default-mode">Default Mode</label>
+                    <select id="default-mode" class="form-input" style="max-width:220px">
+                        <option value="biz">Business</option>
+                        <option value="dev">Developer</option>
+                    </select>
+                </div>
+                <div>
+                    <button id="save-ux" class="btn btn-primary"><i data-feather="save"></i> Save UX Defaults</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced Tasks Section -->
+        <section id="advanced-tasks" class="border rounded mb-8">
+            <button class="w-full text-left px-4 py-3 bg-gray-50 border-b font-medium flex items-center justify-between" data-acc="toggle" aria-controls="advanced-tasks-content">
+                <span>🔧 Advanced Tasks (Manual Operations)</span>
+                <i data-feather="chevron-down"></i>
+            </button>
+            <div id="advanced-tasks-content" class="p-4" style="display: none;">
+                <p class="text-sm text-gray-600 mb-4">Run scheduled backend operations manually. These tasks are normally automated but can be triggered on-demand.</p>
+                
+                <!-- Learning & Indexing Tasks -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i data-feather="cpu" class="w-4 h-4 mr-2"></i>
+                        Learning & Indexing
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Re-index Learning Data</h5>
+                            <p class="text-xs text-gray-600 mb-2">Rebuild FAISS index from experience store</p>
+                            <button id="manual-reindex" class="btn btn-warning btn-sm">
+                                <i data-feather="refresh-ccw" class="w-3 h-3"></i> Re-index Now
+                            </button>
+                            <div id="reindex-status" class="text-xs mt-1"></div>
+                        </div>
+                        
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Rebuild Knowledge Base</h5>
+                            <p class="text-xs text-gray-600 mb-2">Regenerate schema embeddings</p>
+                            <button id="manual-rebuild-kb" class="btn btn-success btn-sm">
+                                <i data-feather="database" class="w-3 h-3"></i> Rebuild KB
+                            </button>
+                            <div id="rebuild-kb-status" class="text-xs mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Quality & Validation -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i data-feather="shield" class="w-4 h-4 mr-2"></i>
+                        Data Quality & Validation
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Run Regression Tests</h5>
+                            <p class="text-xs text-gray-600 mb-2">Test SQL generation accuracy</p>
+                            <button id="manual-regression" class="btn btn-info btn-sm">
+                                <i data-feather="play-circle" class="w-3 h-3"></i> Run Tests
+                            </button>
+                            <div id="regression-status" class="text-xs mt-1"></div>
+                        </div>
+                        
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Validate Experience Store</h5>
+                            <p class="text-xs text-gray-600 mb-2">Check learning data integrity</p>
+                            <button id="manual-validate-xp" class="btn btn-secondary btn-sm">
+                                <i data-feather="check-circle" class="w-3 h-3"></i> Validate
+                            </button>
+                            <div id="validate-xp-status" class="text-xs mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Tasks -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i data-feather="settings" class="w-4 h-4 mr-2"></i>
+                        Maintenance & Cleanup
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Clean Old Data</h5>
+                            <p class="text-xs text-gray-600 mb-2">Remove expired audit logs & experiences</p>
+                            <button id="manual-cleanup" class="btn btn-warning btn-sm">
+                                <i data-feather="trash-2" class="w-3 h-3"></i> Clean Now
+                            </button>
+                            <div id="cleanup-status" class="text-xs mt-1"></div>
+                        </div>
+                        
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Optimize Database</h5>
+                            <p class="text-xs text-gray-600 mb-2">Vacuum SQLite & rebuild indexes</p>
+                            <button id="manual-optimize-db" class="btn btn-primary btn-sm">
+                                <i data-feather="zap" class="w-3 h-3"></i> Optimize
+                            </button>
+                            <div id="optimize-db-status" class="text-xs mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monitoring & Health -->
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i data-feather="activity" class="w-4 h-4 mr-2"></i>
+                        Monitoring & Health
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">System Health Check</h5>
+                            <p class="text-xs text-gray-600 mb-2">Test all components & connections</p>
+                            <button id="manual-health-check" class="btn btn-info btn-sm">
+                                <i data-feather="heart" class="w-3 h-3"></i> Check Health
+                            </button>
+                            <div id="health-check-status" class="text-xs mt-1"></div>
+                        </div>
+                        
+                        <div class="border rounded p-3">
+                            <h5 class="font-medium text-sm mb-2">Generate Reports</h5>
+                            <p class="text-xs text-gray-600 mb-2">Create usage & performance reports</p>
+                            <button id="manual-generate-reports" class="btn btn-success btn-sm">
+                                <i data-feather="file-text" class="w-3 h-3"></i> Generate
+                            </button>
+                            <div id="generate-reports-status" class="text-xs mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Actions -->
+                <div class="mb-4">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center text-red-600">
+                        <i data-feather="alert-triangle" class="w-4 h-4 mr-2"></i>
+                        Emergency Actions
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="border border-red-200 rounded p-3 bg-red-50">
+                            <h5 class="font-medium text-sm mb-2 text-red-800">Reset Learning Data</h5>
+                            <p class="text-xs text-red-600 mb-2">Clear all experience store data</p>
+                            <button id="emergency-reset-learning" class="btn btn-danger btn-sm">
+                                <i data-feather="x-circle" class="w-3 h-3"></i> Reset Learning
+                            </button>
+                            <div id="reset-learning-status" class="text-xs mt-1"></div>
+                        </div>
+                        
+                        <div class="border border-red-200 rounded p-3 bg-red-50">
+                            <h5 class="font-medium text-sm mb-2 text-red-800">Force Model Reload</h5>
+                            <p class="text-xs text-red-600 mb-2">Restart AI models & connections</p>
+                            <button id="emergency-reload-models" class="btn btn-danger btn-sm">
+                                <i data-feather="rotate-ccw" class="w-3 h-3"></i> Reload Models
+                            </button>
+                            <div id="reload-models-status" class="text-xs mt-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Log -->
+                <div class="border-t pt-4">
+                    <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+                        <i data-feather="list" class="w-4 h-4 mr-2"></i>
+                        Task Execution Log
+                    </h4>
+                    <div id="task-log" class="bg-gray-100 rounded p-3 text-xs font-mono max-h-40 overflow-y-auto">
+                        <div class="text-gray-500">No tasks executed yet...</div>
+                    </div>
+                    <button id="clear-task-log" class="btn btn-secondary btn-sm mt-2">
+                        <i data-feather="trash" class="w-3 h-3"></i> Clear Log
+                    </button>
+                </div>
+            </div>
         </section>
     </div>
 
@@ -213,6 +476,19 @@
         const trainingStatusMsg = document.getElementById('training-status-message');
         const reloadFaissBtn = document.getElementById('reload-faiss-btn');
         const reloadStatusMsg = document.getElementById('reload-status-message');
+        const reindexBtn = document.getElementById('btn-reindex');
+        const learningStatus = document.getElementById('learning-status');
+
+        // Accordion interactions
+        document.querySelectorAll('[data-acc="toggle"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('aria-controls');
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.display = (el.style.display === 'none') ? '' : 'none';
+                feather.replace();
+            });
+        });
 
         function showDbStatus(message, type = 'info') {
             dbStatusMsg.innerHTML = `<div class="alert alert-${type}">${message}</div>`; feather.replace();
@@ -287,9 +563,10 @@
                 const res = await fetch('/api/training/run', { method: 'POST' });
                 const result = await res.json();
                 showTrainingStatus(result.message, (res.status === 202 || result.status === 'success') ? 'info' : 'danger');
-                if (res.status === 202 || result.status === 'success') { // 202 is "Accepted" for background task
+                if (res.status === 202 || result.status === 'success') { // Accepted/background
                     showReloadStatus('Training initiated/completed. Reload Knowledge Base for changes to take effect in the chat.', 'info');
-                }
+                    reloadFaissBtn.style.display = '';
+                } else { reloadFaissBtn.style.display = 'none'; }
             } catch (e) { showTrainingStatus(`Error initiating training: ${e.message}`, 'danger'); }
             finally { runTrainingBtn.disabled = false; reloadFaissBtn.disabled = false; feather.replace(); }
         });
@@ -303,6 +580,16 @@
                 showReloadStatus(result.message, result.status === 'success' ? 'success' : 'danger');
             } catch (e) { showReloadStatus(`Error: ${e.message}`, 'danger'); }
             finally { reloadFaissBtn.disabled = false; runTrainingBtn.disabled = false; feather.replace(); }
+        });
+        reindexBtn.addEventListener('click', async ()=>{
+            learningStatus.textContent = 'Re-index requested...';
+            reindexBtn.disabled = true;
+            try{
+                const r = await fetch('/api/learn/reindex', { method:'POST' });
+                const j = await r.json();
+                learningStatus.textContent = (j && j.message) ? j.message : 'Re-index requested.';
+            }catch(e){ learningStatus.textContent = 'Failed: ' + e.message; }
+            finally{ reindexBtn.disabled = false; }
         });
         //naveed edited
         async function fetchWithTimeout(url, options = {}, ms = 10000) {
@@ -344,21 +631,40 @@
 
         // Load all available tables and mark previously saved selections.
         async function loadTables() {
-        const res = await fetch('/api/settings/tables/list');
-        const json = await res.json();
-        const cont = document.getElementById('tables-container');
-        cont.innerHTML = '';
-        const selected = new Set(json.selected || []);
-        (json.tables || []).forEach(t => {
-            const id = 'tbl_' + t.replace(/\W/g,'_');
-            cont.insertAdjacentHTML('beforeend', `
-            <label style="display:block">
-                <input type="checkbox" id="${id}" value="${t}" ${selected.has(t) ? 'checked' : ''}/>
-                ${t}
-            </label>
-            `);
-        });
+            const res = await fetch('/api/settings/tables/list');
+            const json = await res.json();
+            const cont = document.getElementById('tables-container');
+            cont.innerHTML = '';
+            const selected = new Set(json.selected || []);
+            (json.tables || []).forEach(t => {
+                const id = 'tbl_' + t.replace(/\W/g,'_');
+                cont.insertAdjacentHTML('beforeend', `
+                <label style="display:block">
+                    <input type="checkbox" id="${id}" value="${t}" ${selected.has(t) ? 'checked' : ''}/>
+                    ${t}
+                </label>
+                `);
+            });
+            // Apply filter view
+            applyTableFilter();
         }
+        function applyTableFilter(){
+            const mode = (document.getElementById('table-filter')?.value)||'all';
+            const boxes = [...document.querySelectorAll('#tables-container input[type=checkbox]')];
+            boxes.forEach(b=>{
+                const show = (mode==='all') || (mode==='selected' && b.checked);
+                const row = b.closest('label');
+                if (row) row.style.display = show ? 'block' : 'none';
+            });
+        }
+        document.getElementById('table-filter').addEventListener('change', applyTableFilter);
+        document.getElementById('btn-select-all').addEventListener('click', ()=>{
+            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=true);
+        });
+        document.getElementById('btn-deselect-all').addEventListener('click', ()=>{
+            document.querySelectorAll('#tables-container input[type=checkbox]').forEach(b=> b.checked=false);
+        });
+        document.getElementById('btn-refresh-tables').addEventListener('click', loadTables);
 
         // Persist user-selected tables for training/indexing filter
         document.getElementById('save-tables-btn').addEventListener('click', async () => {
@@ -375,6 +681,378 @@
 
         // Load table list on page open
         loadTables();
+
+        // Inference settings
+        async function loadInference() {
+            try {
+                const r = await fetch('/api/settings/inference');
+                const j = await r.json();
+                document.getElementById('inference-mode').value = (j && j.inference) || 'gemini';
+            } catch (e) {}
+        }
+        document.getElementById('save-inference').addEventListener('click', async () => {
+            const val = document.getElementById('inference-mode').value;
+            try {
+                await fetch('/api/settings/inference', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ inference: val }) });
+                alert('Inference mode saved.');
+            } catch (e) {
+                alert('Failed to save inference mode.');
+            }
+            try {
+                const autoSum = document.getElementById('auto-summarize').checked;
+                await fetch('/api/settings/auto_summarize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_summarize: autoSum }) });
+            } catch (e) {}
+        });
+
+        // Learning settings
+        async function loadLearning() {
+            try {
+                const r = await fetch('/api/settings/learning');
+                const j = await r.json();
+                document.getElementById('auto-learn').checked = !!(j && j.auto_log_learning);
+            } catch (e) {}
+            try {
+                const r2 = await fetch('/api/settings/auto_summarize');
+                const j2 = await r2.json();
+                document.getElementById('auto-summarize').checked = !!(j2 && j2.auto_summarize);
+            } catch (e) {}
+        }
+        document.getElementById('save-learning').addEventListener('click', async () => {
+            const enabled = document.getElementById('auto-learn').checked;
+            try {
+                await fetch('/api/settings/learning', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ auto_log_learning: enabled }) });
+                alert('Learning setting saved.');
+            } catch (e) {
+                alert('Failed to save learning setting.');
+            }
+        });
+
+        // Harvest
+        const harvestStatus = document.getElementById('harvest-status');
+        function setHarvest(msg){ harvestStatus.textContent = msg; }
+        document.getElementById('btn-harvest-sources').addEventListener('click', async ()=>{
+            setHarvest('Loading sources...');
+            try{ const r = await fetch('/api/metadata/sources'); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Failed to load sources'); }
+        });
+        document.getElementById('btn-harvest-search').addEventListener('click', async ()=>{
+            const q = (document.getElementById('harvest-q').value||'').trim(); setHarvest('Searching...');
+            try{ const r = await fetch(`/api/metadata/assets?q=${encodeURIComponent(q)}&limit=50`); const j = await r.json(); document.getElementById('harvest-results').textContent = JSON.stringify(j, null, 2); setHarvest(''); }catch(e){ setHarvest('Search failed'); }
+        });
+        document.getElementById('btn-harvest-upload').addEventListener('click', async ()=>{
+            const f = document.getElementById('harvest-file').files[0]; if(!f){ alert('Please choose a JSON file.'); return; }
+            try{ const txt = await f.text(); const payload = JSON.parse(txt); setHarvest('Uploading...'); const r = await fetch('/api/metadata/bulk_upsert', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const j = await r.json(); setHarvest(`Upserted: ${j.upserted}`); }catch(e){ setHarvest('Upload failed'); }
+        });
+
+        // Run server-side harvest (existing endpoint expected)
+        document.getElementById('btn-harvest-run').addEventListener('click', async ()=>{
+            setHarvest('Harvesting...');
+            try{
+                const resp = await fetch('/api/metadata/harvest', { method:'POST' });
+                if(resp.status === 404){ setHarvest('Harvest endpoint not found.'); return; }
+                const j = await resp.json().catch(()=>({status:'ok'}));
+                setHarvest(j.message || 'Harvest requested.');
+            }catch(e){ setHarvest('Harvest failed'); }
+        });
+
+        loadInference();
+        loadLearning();
+        // default collapse all but first
+        ['step2','step3','step4','step5','step6','advanced-tasks-content'].forEach(id=>{ const el = document.getElementById(id); if (el) el.style.display='none'; });
+
+        // UX defaults persistence via localStorage
+        const LS_MODE_KEY = 'asklytics_ui_mode';
+        (function initUx(){ const m = localStorage.getItem(LS_MODE_KEY)||'biz'; const sel = document.getElementById('default-mode'); if(sel) sel.value = m; })();
+        document.getElementById('save-ux').addEventListener('click', ()=>{
+            const m = document.getElementById('default-mode').value; localStorage.setItem(LS_MODE_KEY, m); alert('Saved default UI mode.');
+        });
+
+        // Chat session limit setting
+        (async function loadChatLimit(){
+            try{ const r = await fetch('/api/config/chat_limit'); const j = await r.json();
+                const input = document.createElement('div');
+                input.innerHTML = '<label class="form-label" for="chat-limit">Chat Sessions Limit</label><input id="chat-limit" type="number" min="1" max="50" class="form-input" style="max-width:160px" /> <button id="save-chat-limit" class="btn btn-primary" style="margin-left:.5rem"><i data-feather="save"></i> Save</button>';
+                document.getElementById('ux-defaults').querySelector('#step6').appendChild(input);
+                document.getElementById('chat-limit').value = (j && j.chat_session_limit) || 5;
+                document.getElementById('save-chat-limit').addEventListener('click', async ()=>{
+                    const v = parseInt(document.getElementById('chat-limit').value, 10);
+                    try{ await fetch('/api/config/chat_limit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chat_session_limit: v }) }); alert('Saved chat session limit.'); }catch(e){ alert('Failed to save chat session limit'); }
+                });
+                feather.replace();
+            }catch(e){}
+        })();
+
+        // Advanced Tasks JavaScript
+        (function initAdvancedTasks() {
+            // Task log functionality
+            function logTask(task, status, message) {
+                const log = document.getElementById('task-log');
+                const timestamp = new Date().toLocaleTimeString();
+                const statusIcon = status === 'success' ? '✅' : status === 'error' ? '❌' : '⏳';
+                const logEntry = document.createElement('div');
+                logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${statusIcon} <strong>${task}</strong>: ${message}`;
+                log.appendChild(logEntry);
+                log.scrollTop = log.scrollHeight;
+            }
+
+            function setTaskStatus(buttonId, statusId, status, message) {
+                const button = document.getElementById(buttonId);
+                const statusEl = document.getElementById(statusId);
+                if (statusEl) {
+                    statusEl.textContent = message;
+                    statusEl.className = `text-xs mt-1 ${status === 'success' ? 'text-green-600' : status === 'error' ? 'text-red-600' : 'text-yellow-600'}`;
+                }
+                if (button) {
+                    button.disabled = status === 'loading';
+                    if (status === 'loading') {
+                        button.innerHTML = '⏳ Running...';
+                    } else {
+                        button.innerHTML = button.innerHTML.replace(/⏳ Running\.\.\.|✅|❌/g, '').trim();
+                    }
+                    feather.replace();
+                }
+            }
+
+            // Learning & Indexing Tasks
+            document.getElementById('manual-reindex').addEventListener('click', async () => {
+                setTaskStatus('manual-reindex', 'reindex-status', 'loading', 'Re-indexing...');
+                logTask('Re-index Learning Data', 'loading', 'Starting re-index process...');
+                
+                try {
+                    const response = await fetch('/api/learn/reindex', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-reindex', 'reindex-status', 'success', 'Re-index completed successfully');
+                        logTask('Re-index Learning Data', 'success', `Indexed ${result.indexed || 0} items`);
+                    } else {
+                        const errorMsg = result.error?.message || result.error || 'Re-index failed';
+                        throw new Error(errorMsg);
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-reindex', 'reindex-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Re-index Learning Data', 'error', errorMsg);
+                }
+            });
+
+            document.getElementById('manual-rebuild-kb').addEventListener('click', async () => {
+                setTaskStatus('manual-rebuild-kb', 'rebuild-kb-status', 'loading', 'Rebuilding...');
+                logTask('Rebuild Knowledge Base', 'loading', 'Starting knowledge base rebuild...');
+                
+                try {
+                    const response = await fetch('/api/training/run', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-rebuild-kb', 'rebuild-kb-status', 'success', 'Knowledge base rebuilt successfully');
+                        logTask('Rebuild Knowledge Base', 'success', 'Schema embeddings regenerated');
+                    } else {
+                        throw new Error(result.error || 'Rebuild failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-rebuild-kb', 'rebuild-kb-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Rebuild Knowledge Base', 'error', errorMsg);
+                }
+            });
+
+            // Data Quality & Validation Tasks
+            document.getElementById('manual-regression').addEventListener('click', async () => {
+                setTaskStatus('manual-regression', 'regression-status', 'loading', 'Running tests...');
+                logTask('Run Regression Tests', 'loading', 'Starting regression test suite...');
+                
+                try {
+                    const response = await fetch('/api/learn/regression/run', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        const accuracy = result.accuracy ? `${(result.accuracy * 100).toFixed(1)}%` : 'N/A';
+                        setTaskStatus('manual-regression', 'regression-status', 'success', `Tests completed - Accuracy: ${accuracy}`);
+                        logTask('Run Regression Tests', 'success', `Completed ${result.tests_run || 0} tests with ${accuracy} accuracy`);
+                    } else {
+                        throw new Error(result.error || 'Regression tests failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-regression', 'regression-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Run Regression Tests', 'error', errorMsg);
+                }
+            });
+
+            document.getElementById('manual-validate-xp').addEventListener('click', async () => {
+                setTaskStatus('manual-validate-xp', 'validate-xp-status', 'loading', 'Validating...');
+                logTask('Validate Experience Store', 'loading', 'Checking experience store integrity...');
+                
+                try {
+                    const response = await fetch('/api/learn/validate', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-validate-xp', 'validate-xp-status', 'success', 'Validation completed successfully');
+                        logTask('Validate Experience Store', 'success', `Validated ${result.validated || 0} experiences`);
+                    } else {
+                        throw new Error(result.error || 'Validation failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-validate-xp', 'validate-xp-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Validate Experience Store', 'error', errorMsg);
+                }
+            });
+
+            // Maintenance Tasks
+            document.getElementById('manual-cleanup').addEventListener('click', async () => {
+                setTaskStatus('manual-cleanup', 'cleanup-status', 'loading', 'Cleaning...');
+                logTask('Clean Old Data', 'loading', 'Starting cleanup process...');
+                
+                try {
+                    const response = await fetch('/api/learn/cleanup', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-cleanup', 'cleanup-status', 'success', 'Cleanup completed successfully');
+                        logTask('Clean Old Data', 'success', `Cleaned ${result.cleaned || 0} old records`);
+                    } else {
+                        throw new Error(result.error || 'Cleanup failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-cleanup', 'cleanup-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Clean Old Data', 'error', errorMsg);
+                }
+            });
+
+            document.getElementById('manual-optimize-db').addEventListener('click', async () => {
+                setTaskStatus('manual-optimize-db', 'optimize-db-status', 'loading', 'Optimizing...');
+                logTask('Optimize Database', 'loading', 'Starting database optimization...');
+                
+                try {
+                    const response = await fetch('/api/db/optimize', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-optimize-db', 'optimize-db-status', 'success', 'Database optimized successfully');
+                        logTask('Optimize Database', 'success', 'Database vacuumed and indexes rebuilt');
+                    } else {
+                        throw new Error(result.error || 'Optimization failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-optimize-db', 'optimize-db-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Optimize Database', 'error', errorMsg);
+                }
+            });
+
+            // Monitoring & Health Tasks
+            document.getElementById('manual-health-check').addEventListener('click', async () => {
+                setTaskStatus('manual-health-check', 'health-check-status', 'loading', 'Checking...');
+                logTask('System Health Check', 'loading', 'Running comprehensive health check...');
+                
+                try {
+                    const response = await fetch('/api/health/full', { method: 'GET' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        const status = result.overall_status === 'healthy' ? 'success' : 'error';
+                        setTaskStatus('manual-health-check', 'health-check-status', status, result.overall_status);
+                        logTask('System Health Check', status, `Overall: ${result.overall_status}`);
+                    } else {
+                        throw new Error(result.error || 'Health check failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-health-check', 'health-check-status', 'error', `Error: ${errorMsg}`);
+                    logTask('System Health Check', 'error', errorMsg);
+                }
+            });
+
+            document.getElementById('manual-generate-reports').addEventListener('click', async () => {
+                setTaskStatus('manual-generate-reports', 'generate-reports-status', 'loading', 'Generating...');
+                logTask('Generate Reports', 'loading', 'Creating usage and performance reports...');
+                
+                try {
+                    const response = await fetch('/api/reports/generate', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('manual-generate-reports', 'generate-reports-status', 'success', 'Reports generated successfully');
+                        logTask('Generate Reports', 'success', `Generated ${result.reports || 0} reports`);
+                    } else {
+                        throw new Error(result.error || 'Report generation failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('manual-generate-reports', 'generate-reports-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Generate Reports', 'error', errorMsg);
+                }
+            });
+
+            // Emergency Actions
+            document.getElementById('emergency-reset-learning').addEventListener('click', async () => {
+                if (!confirm('⚠️ WARNING: This will permanently delete all learning data. Are you sure?')) return;
+                
+                setTaskStatus('emergency-reset-learning', 'reset-learning-status', 'loading', 'Resetting...');
+                logTask('Reset Learning Data', 'loading', 'Clearing all experience store data...');
+                
+                try {
+                    const response = await fetch('/api/learn/reset', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('emergency-reset-learning', 'reset-learning-status', 'success', 'Learning data reset successfully');
+                        logTask('Reset Learning Data', 'success', 'All learning data cleared');
+                    } else {
+                        throw new Error(result.error || 'Reset failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('emergency-reset-learning', 'reset-learning-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Reset Learning Data', 'error', errorMsg);
+                }
+            });
+
+            document.getElementById('emergency-reload-models').addEventListener('click', async () => {
+                if (!confirm('⚠️ WARNING: This will restart all AI models. Are you sure?')) return;
+                
+                setTaskStatus('emergency-reload-models', 'reload-models-status', 'loading', 'Reloading...');
+                logTask('Force Model Reload', 'loading', 'Restarting AI models and connections...');
+                
+                try {
+                    const response = await fetch('/api/models/reload', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        setTaskStatus('emergency-reload-models', 'reload-models-status', 'success', 'Models reloaded successfully');
+                        logTask('Force Model Reload', 'success', 'All AI models restarted');
+                    } else {
+                        throw new Error(result.error || 'Model reload failed');
+                    }
+                } catch (error) {
+                    const errorMsg = error.message || error.toString() || 'Unknown error';
+                    setTaskStatus('emergency-reload-models', 'reload-models-status', 'error', `Error: ${errorMsg}`);
+                    logTask('Force Model Reload', 'error', errorMsg);
+                }
+            });
+
+            // Clear task log
+            document.getElementById('clear-task-log').addEventListener('click', () => {
+                document.getElementById('task-log').innerHTML = '<div class="text-gray-500">No tasks executed yet...</div>';
+            });
+
+            // Add advanced tasks to accordion
+            const advancedToggle = document.querySelector('[data-acc="toggle"][aria-controls="advanced-tasks-content"]');
+            if (advancedToggle) {
+                advancedToggle.addEventListener('click', function() {
+                    const content = document.getElementById('advanced-tasks-content');
+                    const icon = this.querySelector('i');
+                    if (content && icon) {
+                        const isHidden = content.style.display === 'none';
+                        content.style.display = isHidden ? 'block' : 'none';
+                        icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                });
+            }
+        })();
     </script>
 </body>
 

@@ -21,9 +21,11 @@ def _load_suite(name: str) -> List[Dict[str, Any]]:
     try:
         p = Path("asklytics_learning_engine/data/regression_default.json")
         if p.exists():
-            return json.loads(p.read_text(encoding="utf-8")).get("cases", [])
-    except Exception:
-        pass
+            data = json.loads(p.read_text(encoding="utf-8"))
+            cases = data.get("cases", [])
+            return cases
+    except Exception as e:
+        print(f"Error loading regression suite: {e}")
     return []
 
 
@@ -51,7 +53,16 @@ def _meets_expectations(sql: str, expected: Dict[str, Any]) -> Tuple[bool, str]:
 
 def run_suite(suite_name: str = "default", tests: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     cases = tests if tests is not None else _load_suite(suite_name)
-    gw = GeminiWrapper()
+    
+    if not cases:
+        return {"summary": {"passed": 0, "failed": 0, "duration_ms": 0}, "results": []}
+    
+    try:
+        gw = GeminiWrapper()
+    except Exception as e:
+        # If GeminiWrapper fails, return failed results for all cases
+        return {"summary": {"passed": 0, "failed": len(cases), "duration_ms": 0}, "results": []}
+    
     results: List[Dict[str, Any]] = []
     t0 = time.time()
     for case in cases:

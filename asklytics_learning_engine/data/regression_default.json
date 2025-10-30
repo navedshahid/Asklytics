@@ -1,3 +1,44 @@
 {
-  "cases": []
+  "cases": [
+    {
+      "id": "test_1",
+      "prompt": "show me all customers",
+      "expected": {
+        "contains": ["SELECT", "customers"],
+        "not_contains": ["DROP", "DELETE", "UPDATE"]
+      }
+    },
+    {
+      "id": "test_2", 
+      "prompt": "count total orders",
+      "expected": {
+        "contains": ["SELECT", "COUNT", "orders"],
+        "not_contains": ["DROP", "DELETE", "UPDATE"]
+      }
+    },
+    {
+      "id": "test_3",
+      "prompt": "top 10 products by sales",
+      "expected": {
+        "contains": ["SELECT", "TOP", "products"],
+        "not_contains": ["DROP", "DELETE", "UPDATE"]
+      }
+    },
+    {
+      "id": "test_4",
+      "prompt": "average price by category",
+      "expected": {
+        "contains": ["SELECT", "AVG", "price", "category"],
+        "not_contains": ["DROP", "DELETE", "UPDATE"]
+      }
+    },
+    {
+      "id": "test_5",
+      "prompt": "customers with orders in last 30 days",
+      "expected": {
+        "contains": ["SELECT", "customers", "orders", "WHERE"],
+        "not_contains": ["DROP", "DELETE", "UPDATE"]
+      }
+    }
+  ]
 }

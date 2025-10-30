@@ -9,8 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/asklytics_ui.js"></script>
+    <link rel="stylesheet" href="/static/css/asklytics.css" />
     <style>
-        :root { --sidebar-width: 288px; --sidebar-width-collapsed: 64px; --header-height: 60px; }
+        :root { --sidebar-width: 240px; --sidebar-width-collapsed: 64px; --header-height: 60px; }
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #333e48; overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         .app-container { display: flex; height: 100vh; }
@@ -36,8 +39,8 @@
         .sidebar-toggle-btn:hover { background-color: #edf2f7; }
         .db-info-header { display: flex; align-items: center; font-size: 0.875rem; color: #718096; }
         .db-info-header i { margin-right: 0.375rem; }
-        .chat-area { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 1.5rem; background-color: #f4f7f9; }
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; background-color: #f4f7f9; }
+        #chat-box { flex-grow: 1; }
         .chat-input-area { background-color: #ffffff; border-top: 1px solid #e5e7eb; padding: 1rem 1.5rem; box-shadow: 0 -2px 10px rgba(0,0,0,0.02); }
         .chat-input { border: 1px solid #d1d5db; padding: 0.75rem 1rem; font-size: 0.9375rem; background-color: #f9fafb; width: 100%; }
         .chat-input:focus { border-color: #6366f1; box-shadow: 0 0 0 0.125rem rgba(99, 102, 241, 0.25); }
@@ -59,25 +62,26 @@
         .results-table th { background-color: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; }
         .no-data-message { padding: 1rem; color: #6b7280; font-style: italic; }
     </style>
+    <script src="/static/js/feedback.js"></script>
 </head>
 <body class="h-screen">
 
 <div class="app-container">
   <aside id="app-sidebar" class="sidebar">
-    <div class="sidebar-header">
-        <i data-feather="bar-chart-2" class="sidebar-title-icon w-6 h-6"></i>
-        <span class="sidebar-title-text">AskLytics</span>
+    <div class="sidebar-header flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-feather="bar-chart-2" class="sidebar-title-icon w-6 h-6"></i>
+          <span class="sidebar-title-text">AskLytics</span>
+        </div>
+        <nav class="hidden md:flex items-center gap-3 text-sm text-gray-600">
+          <a class="hover:text-blue-600" href="/settings">Settings</a>
+          <a class="hover:text-blue-600" href="/dashboard">Dashboard</a>
+          <a id="open-explorer" class="hover:text-blue-600" href="#">Metadata Explorer</a>
+        </nav>
     </div>
     <button id="new-conversation-btn" class="new-conversation-btn">
       <i data-feather="plus-circle" class="w-5 h-5"></i> <span class="new-session-text">New Session</span>
     </button>
-    <div class="flex items-center space-x-2 px-4 py-2">
-      <label for="model-selector" class="text-sm text-gray-600">Model:</label>
-      <select id="model-selector" class="border border-gray-300 rounded px-2 py-1 text-sm">
-        <option value="local">Local Model</option>
-        <option value="gemini">Gemini 1.5 Flash</option>
-      </select>
-    </div>
     <div class="flex-1 overflow-y-auto conversation-history-list" id="conversation-history-list"></div>
     <div class="p-4 text-xs text-gray-400 border-t border-gray-200 text-center">
         <span class="version-text">Version 3.1.0</span>
@@ -86,18 +90,82 @@
 
   <div class="main-content-wrapper">
     <header class="app-header">
-        <div class="flex items-center">
+        <div class="flex items-center gap-2">
             <button id="sidebar-toggle" class="sidebar-toggle-btn">
                 <i data-feather="menu" class="w-5 h-5"></i>
             </button>
+            <div class="hidden md:flex items-center gap-2 text-sm">
+                <span class="text-gray-500">Mode:</span>
+                <button id="mode-dev" class="px-2 py-0.5 border rounded bg-blue-50" title="Developer Mode">Developer</button>
+                <button id="mode-biz" class="px-2 py-0.5 border rounded" title="Business Mode">Business</button>
+            </div>
         </div>
-        <div id="db-info" class="db-info-header">
-            <i data-feather="database" class="inline-block w-4 h-4 text-gray-400"></i>
-            <span>Connecting...</span>
+        <div class="flex items-center gap-4">
+            <a href="/settings" title="Settings"><i data-feather="settings" class="w-5 h-5"></i></a>
+            <a href="/dashboard" title="Dashboard"><i data-feather="bar-chart-2" class="w-5 h-5"></i></a>
+            <div id="db-info" class="db-info-header">
+                <i data-feather="database" class="inline-block w-4 h-4 text-gray-400"></i>
+                <span>Connecting...</span>
+            </div>
         </div>
     </header>
     <main class="chat-area">
-        <section id="chat-box" class="flex-1 overflow-y-auto p-6 space-y-5"></section>
+        <div class="analysis-layout">
+            <section class="chat-stream column">
+                <header class="panel-heading">Chat Results</header>
+                <section id="chat-box" class="chat-scroll"></section>
+            </section>
+
+            <section class="analysis-center column">
+                <article id="executive-card" class="card hidden">
+                    <header class="card-header">
+                        <h2>Executive Summary</h2>
+                        <span class="badge" id="confidence-badge">Confidence</span>
+                    </header>
+                    <div id="insight-panel" class="executive-body" aria-live="polite">
+                        <div class="insight-summary text-gray-800"></div>
+                        <div class="provenance text-sm text-gray-600 mt-2"></div>
+                    </div>
+                    <div class="summary-actions">
+                        <button id="btn-explain-quick" class="px-3 py-1 border rounded">Refresh Summary</button>
+                        <button id="btn-why" class="px-3 py-1 border rounded">Why this?</button>
+                    </div>
+                </article>
+
+                <article id="feedback-card" class="card hidden">
+                    <header class="card-header">
+                        <h3>Rate the results</h3>
+                    </header>
+                    <div id="feedback-panel-slot" class="feedback-slot"></div>
+                </article>
+
+                <article id="results-card" class="card hidden">
+                    <header class="card-header">
+                        <h3>Results</h3>
+                        <div class="card-actions">
+                            <button id="btn-download-csv" class="px-3 py-1 border rounded">Download CSV</button>
+                        </div>
+                    </header>
+                    <div id="results-container" class="results-table-container"></div>
+                    <details id="sql-details" class="sql-details">
+                        <summary>View SQL</summary>
+                        <pre id="sqlText" class="text-sm"></pre>
+                    </details>
+                </article>
+            </section>
+
+            <section class="visuals-column column">
+                <article id="visuals-card" class="card hidden">
+                    <header class="card-header">
+                        <h3>Visuals</h3>
+                        <button id="btn-save-chart" class="px-3 py-1 border rounded">Save Image</button>
+                    </header>
+                    <canvas id="resultChart" height="180" class="hidden"></canvas>
+                    <p id="visuals-placeholder" class="text-sm text-gray-500">Charts will appear when numeric data is available.</p>
+                </article>
+            </section>
+        </div>
+
         <footer class="chat-input-area">
           <form id="chat-form" class="flex items-center gap-3">
             <input type="text" id="user-input" class="chat-input" placeholder="Ask about your data..." required />
@@ -116,11 +184,160 @@
     const chatBox = document.getElementById("chat-box");
     const userInput = document.getElementById("user-input");
     const sendButton = document.getElementById("send-button");
-    const dbInfoDiv = document.getElementById('db-info').querySelector('span');
-    const modelSelector = document.getElementById("model-selector");
+    // Optional DB status elements (may not exist in business mode)
+    const dbInfoDiv = document.getElementById('db-info') ? document.getElementById('db-info').querySelector('span') : null;
+    const dbInfoMini = document.getElementById('db-info-mini') || null;
+    let currentInference = 'gemini';
+    window.businessMode = false;
+    let autoSummarize = false;
     const sendButtonOriginalContent = sendButton.innerHTML;
     // ... and any other DOM elements you need ...
     
+    // --- Threads API (server-backed) ---
+    async function apiListThreads(){ const r = await fetch('/api/threads'); return (await r.json()).threads || []; }
+    async function apiCreateThread(title){ const r = await fetch('/api/threads', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title })}); return await r.json(); }
+    async function apiGetThread(id){
+        const r = await fetch(`/api/threads/${id}`);
+        let data = {};
+        try { data = await r.json(); } catch(e){}
+        return { ok: r.ok, status: r.status, data };
+    }
+    async function apiRenameThread(id, title){ await fetch(`/api/threads/${id}/rename`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title })}); }
+    async function apiDeleteThread(id){ await fetch(`/api/threads/${id}`, { method:'DELETE' }); }
+    async function apiAddMessage(id, type, content){
+        const r = await fetch(`/api/threads/${id}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, content })});
+        if (r.status === 404) {
+            try {
+                const t = await apiCreateThread('New Chat');
+                const hidden = document.getElementById('current-thread-id'); if(hidden) hidden.value = t.id;
+                await fetch(`/api/threads/${t.id}/messages`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, content })});
+                const list = await apiListThreads(); renderThreadsList(list, t.id);
+            } catch(e) { if (window.AskUI?.toast) AskUI.toast.error('Could not create a new chat.'); }
+        }
+    }
+
+    let latestStatePayload = null;
+
+    async function persistThreadState(tid, payload, replace = false){
+        if(!tid) return;
+        latestStatePayload = replace ? { ...(payload || {}) } : { ...(latestStatePayload || {}), ...(payload || {}) };
+        try {
+            await fetch(`/api/threads/${tid}/state`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(latestStatePayload) });
+        } catch(err){ console.warn('Failed to persist thread state', err); }
+    }
+
+    function renderThreadsList(items, activeId){
+        const cont = document.getElementById('conversation-history-list'); if(!cont) return;
+        cont.innerHTML = '';
+        (items||[]).forEach(t=>{
+            const div=document.createElement('div'); div.className='history-item'+(t.id===activeId?' active':'');
+            div.innerHTML = `<span class="history-item-title">${t.title||'Chat'}</span><div class="flex items-center gap-1"><button class="delete-history-btn" data-act="rename" data-id="${t.id}" title="Rename"><i data-feather="edit-2"></i></button><button class="delete-history-btn" data-act="delete" data-id="${t.id}" title="Delete"><i data-feather="trash-2"></i></button></div>`;
+            div.addEventListener('click', async (e)=>{ if((e.target).closest('button')) return; await loadThread(t.id); });
+            cont.appendChild(div);
+        });
+        feather.replace();
+    }
+
+    async function loadThread(id){
+        const res = await apiGetThread(id);
+        if (!res.ok) {
+            if (res.status === 404) {
+                try {
+                    const t = await apiCreateThread('New Chat');
+                    const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = t.id;
+                    const list = await apiListThreads(); renderThreadsList(list, t.id);
+                    return;
+                } catch(e) { if (window.AskUI?.toast) AskUI.toast.info('Started a new chat.'); return; }
+            } else {
+                if (window.AskUI?.toast) AskUI.toast.error('Failed to load thread');
+                return;
+            }
+        }
+        const data = res.data || {};
+        const box = document.getElementById('chat-box'); box.innerHTML='';
+        (data.messages||[]).forEach(m=> appendMessageDOM({ type: m.type, content: m.content }, false));
+        const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = id;
+        const list = await apiListThreads(); renderThreadsList(list, id);
+        if (data.state) {
+            try { await hydrateFromState(data.state); } catch(e){ console.warn('Failed to hydrate state', e); }
+        }
+    }
+
+    async function hydrateFromState(state){
+        if(!state) return;
+        const columns = state.columns || [];
+        const rows = state.rows || [];
+        const sql = state.sql || '';
+        const query = state.query || '';
+
+        const resultsCard = document.getElementById('results-card');
+        const feedbackCard = document.getElementById('feedback-card');
+        const execCard = document.getElementById('executive-card');
+        const panel = document.getElementById('insight-panel');
+        const rc = document.getElementById('results-container');
+        const sqlT = document.getElementById('sqlText');
+        const sqlDetails = document.getElementById('sql-details');
+        const feedbackSlot = document.getElementById('feedback-panel-slot');
+
+        if(resultsCard){ resultsCard.classList.remove('hidden'); }
+        if(feedbackCard){ feedbackCard.classList.remove('hidden'); }
+        if(execCard && panel){ execCard.classList.remove('hidden'); panel.classList.remove('hidden'); }
+        if(rc){ rc.innerHTML = ''; if(columns.length && rows.length){ rc.appendChild(createHtmlTable(columns, rows)); } else { rc.innerHTML = '<div class="no-data-message">No cached rows available. Rerun the analysis for fresh data.</div>'; } }
+        if(sqlT){ sqlT.textContent = sql; }
+        if(sqlDetails){ sqlDetails.open = false; }
+        if(feedbackSlot){
+            feedbackSlot.innerHTML = '';
+            if(window.AskFeedback){
+                try {
+                    AskFeedback.prepareForNewResult();
+                    AskFeedback.attach(feedbackSlot);
+                    if(state.xp_id){ window._lastXpId = state.xp_id; AskFeedback.onExperienceSaved(state.xp_id); }
+                    AskFeedback.onStreamFinished(true);
+                    if(state.feedback_status === 'submitted'){ AskFeedback.restoreSubmitted(state.feedback_verdict || 'correct'); }
+                } catch(err){ console.warn('Feedback hydrate failed', err); }
+            }
+        }
+
+        const confidenceObj = state.confidence || (state.confidence_label ? { label: state.confidence_label } : null);
+        window._lastResult = { columns, rows, sql, query, confidence: confidenceObj };
+        latestStatePayload = { ...(state || {}) };
+        if(window.AskUI){
+            AskUI.renderChart(columns, rows);
+            try {
+                if(state.summary || state.provenance){
+                    AskUI.renderSummaryCard({ summary: state.summary || '', bullets: state.summary_bullets || [], provenance: state.provenance || '', confidence: confidenceObj });
+                } else if(columns.length && rows.length){
+                    const payload = { columns, rows, query, sql, signals: state.signals || {} };
+                    const ex = await AskUI.withRetry(()=> fetch('/api/insight/explain', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r=>r.json()));
+                    AskUI.renderSummaryCard(ex);
+                }
+            } catch(err){
+                console.warn('Summary hydrate failed', err);
+                const summaryEl = panel?.querySelector('.insight-summary');
+                if(summaryEl){ summaryEl.textContent = 'Summary unavailable. Rerun the analysis to generate fresh insights.'; }
+            }
+        }
+    }
+
+    window.markFeedbackSubmitted = async function(verdict){
+        const tid = document.getElementById('current-thread-id')?.value;
+        if(!tid) return;
+        await persistThreadState(tid, { feedback_status: 'submitted', feedback_verdict: verdict }, false);
+    };
+
+    document.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('button'); if(!btn) return;
+        if(btn.dataset.act==='rename'){
+            e.preventDefault();
+            const id = btn.dataset.id; const title = prompt('Rename chat to:');
+            if(title){ await apiRenameThread(id, title); const list = await apiListThreads(); const cur = document.getElementById('current-thread-id')?.value; renderThreadsList(list, cur); }
+        }
+        if(btn.dataset.act==='delete'){
+            e.preventDefault();
+            const id = btn.dataset.id; if(confirm('Delete this chat?')){ await apiDeleteThread(id); const list = await apiListThreads(); if(list.length){ await loadThread(list[0].id) } else { const t = await apiCreateThread('New Chat'); await loadThread(t.id) } }
+        }
+    });
+
     // --- Main Logic using Fetch for Streaming ---
     async function handleFormSubmit(e) {
         e.preventDefault();
@@ -129,19 +346,27 @@
         
         // Add user message to UI and history
         appendMessageDOM({ type: 'user', content: question });
+        try { const tid = document.getElementById('current-thread-id')?.value; if(tid) { await apiAddMessage(tid, 'user', question); } } catch(e){}
         userInput.value = "";
+        latestStatePayload = null;
         
         const botMessagePlaceholder = appendMessageDOM({ type: 'bot', content: {} }, true);
-        // capture start time for this query to compute time-to-first-results
-        botMessagePlaceholder.startTime = (window.performance && performance.now) ? performance.now() : Date.now();
         
         sendButton.disabled = true;
         sendButton.innerHTML = `<svg class="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
 
-        const selectedModel = modelSelector.value;
-        const endpoint = selectedModel === 'local' ? '/api/ask/stream' : '/api/gemini_ask/stream';
+        let endpoint;
+        if (currentInference === 'local') {
+            endpoint = '/api/ask/stream';
+        } else {
+            endpoint = '/api/gemini_ask/stream';  // Hybrid: Gemini + SQLCoder
+        }
 
         try {
+            window._lastXpId = null;
+            if (window.AskFeedback) { try { window.AskFeedback.prepareForNewResult(); } catch(e){} }
+            const feedbackSlotInit = document.getElementById('feedback-panel-slot');
+            if (feedbackSlotInit) { feedbackSlotInit.innerHTML = ''; }
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -182,21 +407,86 @@
                                 break;
                             case 'sql_complete':
                                 sqlBlock.textContent = parsed.data.query;
-                                sqlToggle.classList.remove('hidden');
+                                if (!window.businessMode) { sqlToggle.classList.remove('hidden'); } else { sqlBlock.style.display='none'; }
                                 break;
                             case 'result':
+                                const columns = Array.isArray(parsed.data?.columns) ? parsed.data.columns : [];
+                                const rows = Array.isArray(parsed.data?.data) ? parsed.data.data : [];
                                 const tableContainer = botMessagePlaceholder.bubble.querySelector('.results-table-container');
-                                tableContainer.innerHTML = '';
-                                tableContainer.appendChild(createHtmlTable(parsed.data.columns, parsed.data.data));
-                                resultsContainer.classList.remove('hidden');
-                                // show time-to-first-results
-                                const tEl = botMessagePlaceholder.bubble.querySelector('.query-time');
-                                if (tEl && botMessagePlaceholder.startTime) {
-                                    const end = (window.performance && performance.now) ? performance.now() : Date.now();
-                                    const secs = (end - botMessagePlaceholder.startTime) / 1000;
-                                    tEl.textContent = `in ${secs.toFixed(2)}s`;
-                                    tEl.classList.remove('hidden');
+                                if(tableContainer){
+                                  tableContainer.innerHTML = '<div class="text-sm text-gray-500">Result ready. Review the analysis panels for details.</div>';
                                 }
+                                if(resultsContainer){ resultsContainer.classList.add('hidden'); }
+                                const tid = document.getElementById('current-thread-id')?.value;
+                                try { if(tid) { await apiAddMessage(tid, 'bot', 'Result ready'); } } catch(e){}
+                                // Central panel population
+                                try {
+                                  const resultsCard = document.getElementById('results-card'); if(resultsCard) resultsCard.classList.remove('hidden');
+                                  const feedbackCard = document.getElementById('feedback-card'); if(feedbackCard) feedbackCard.classList.remove('hidden');
+                                  const rc = document.getElementById('results-container'); if(rc){ rc.innerHTML=''; rc.appendChild(createHtmlTable(columns, rows)); }
+                                  const feedbackSlot = document.getElementById('feedback-panel-slot'); if(feedbackSlot){ feedbackSlot.innerHTML=''; if(window.AskFeedback){ window.AskFeedback.attach(feedbackSlot); } }
+                                  const st = document.getElementById('sqlText'); if(st){ st.textContent = fullSql || parsed.data.sql || ''; }
+                                  const sqlDetails = document.getElementById('sql-details'); if(sqlDetails){ sqlDetails.open = false; }
+                                } catch(e){}
+                                // Save state for refresh
+                                try {
+                                  const baseState = { columns, rows, sql: fullSql, query: question, signals: {}, feedback_status: 'idle' };
+                                  if(tid){ await persistThreadState(tid, baseState, true); }
+                                  localStorage.setItem('lastThreadId', tid||'');
+                                } catch(e){}
+                                // Business mode explainability and chart
+                                try {
+                                  const explainPayload = { columns, rows, query: question, sql: fullSql, signals: {} };
+                                  if(window.AskUI){
+                                    try {
+                                      const ex = await AskUI.withRetry(()=> fetch('/api/insight/explain', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(explainPayload) }).then(r=>r.json()));
+                                      AskUI.renderSummaryCard(ex);
+                                      window._lastResult = { columns: explainPayload.columns, rows: explainPayload.rows, sql: fullSql, query: question, confidence: ex.confidence };
+                                      if(tid){
+                                        const storedSignals = ex.signals || explainPayload.signals || {};
+                                        await persistThreadState(tid, {
+                                          columns: explainPayload.columns,
+                                          rows: explainPayload.rows,
+                                          sql: fullSql,
+                                          query: question,
+                                          summary: ex.summary,
+                                          summary_bullets: ex.bullets || [],
+                                          provenance: ex.provenance || '',
+                                          confidence_label: ex.confidence?.label || null,
+                                          signals: storedSignals
+                                        });
+                                      }
+                                    } catch(summaryErr) {
+                                      console.warn('Summary generation failed', summaryErr);
+                                      window._lastResult = { columns: explainPayload.columns, rows: explainPayload.rows, sql: fullSql, query: question, confidence: null };
+                                      const execCard = document.getElementById('executive-card');
+                                      const panel = document.getElementById('insight-panel');
+                                      if(execCard && panel){
+                                        execCard.classList.remove('hidden');
+                                        panel.classList.remove('hidden');
+                                        const sumEl = panel.querySelector('.insight-summary');
+                                        if(sumEl) sumEl.textContent = 'Summary unavailable. Review the results below.';
+                                      }
+                                    }
+                                    AskUI.renderChart(explainPayload.columns, explainPayload.rows);
+                                  } else {
+                                    window._lastResult = { columns: explainPayload.columns, rows: explainPayload.rows, sql: fullSql, query: question, confidence: null };
+                                  }
+                                } catch(e){}
+                                break;
+                            case 'xp_saved':
+                                try {
+                                    const xp = parseInt(parsed.data.xp_id);
+                                    if (!Number.isNaN(xp)) {
+                                        window._lastXpId = xp;
+                                        const tidXp = document.getElementById('current-thread-id')?.value;
+                                        if(tidXp){ await persistThreadState(tidXp, { xp_id: xp }); }
+                                        if (window.AskFeedback) { try { window.AskFeedback.onExperienceSaved(xp); } catch(e){} }
+                                    }
+                                } catch(e){}
+                                break;
+                            case 'done':
+                                if (window.AskFeedback) { try { window.AskFeedback.onStreamFinished(); } catch(e){} }
                                 break;
                             case 'error': {
                                 const d = parsed.data || {};
@@ -214,6 +504,7 @@
                                 </div>`;
                                 botMessagePlaceholder.bubble.innerHTML = errHtml;
                                 feather.replace();
+                                if (window.AskFeedback) { try { window.AskFeedback.onStreamFinished(); } catch(e){} }
                                 return; // stop processing further stream
                             }
                         }
@@ -221,9 +512,11 @@
                     }
                 }
             }
+            if (window.AskFeedback) { try { window.AskFeedback.onStreamFinished(); } catch(e){} }
         } catch (error) {
             console.error("Streaming failed:", error);
             const { bubble } = appendMessageDOM({ type: 'bot-error', content: error.message });
+            if (window.AskFeedback) { try { window.AskFeedback.onStreamFinished(); } catch(e){} }
         } finally {
             sendButton.disabled = false;
             sendButton.innerHTML = sendButtonOriginalContent;
@@ -245,11 +538,15 @@
         } else if (message.type === 'bot-error') {
             bubble.innerHTML = `<p class="font-semibold">Error:</p><p>${message.content}</p>`;
         } else { // 'bot' placeholder or final
-             bubble.innerHTML = `
+            // Show plain text when not a placeholder and content is provided
+            if (!isPlaceholder && typeof message.content === 'string' && message.content) {
+                bubble.textContent = message.content;
+            } else {
+                bubble.innerHTML = `
                 <button class="toggle-sql-button hidden"><i data-feather="code" class="w-4 h-4"></i> Show SQL</button>
-                <div class="sql-code-block" style="display: none;"></div>
+                <div class="sql-code-block" style="display: block;"></div>
                 <div class="results-container mt-6 hidden">
-                    <div class="results-header">Query Results: <span class="query-time hidden text-gray-500 text-sm"></span></div>
+                    <div class="results-header">Query Results:</div>
                     <div class="results-table-container"></div>
                 </div>`;
             const sqlToggle = bubble.querySelector('.toggle-sql-button');
@@ -260,6 +557,7 @@
                 sqlToggle.innerHTML = `<i data-feather="${isHidden ? 'eye-off' : 'code'}"></i> ${isHidden ? 'Hide SQL' : 'Show SQL'}`;
                 feather.replace();
             };
+            }
         }
         cont.appendChild(bubble);
         chatBox.appendChild(cont);
@@ -313,22 +611,169 @@
         try {
             const dbInfoRes = await fetch('/api/db_info');
             const dbInfo = await dbInfoRes.json();
-            if (dbInfo && dbInfo.database && dbInfo.database !== "Not Configured") {
-                dbInfoDiv.textContent = `${dbInfo.database} @ ${dbInfo.server}`;
-            } else {
-                dbInfoDiv.textContent = 'DB Not Active';
-            }
+            const txt = (dbInfo && dbInfo.database && dbInfo.database !== "Not Configured") ? `${dbInfo.database} @ ${dbInfo.server}` : 'DB Not Active';
+            if (dbInfoDiv) dbInfoDiv.textContent = txt;
+            if (dbInfoMini) dbInfoMini.textContent = txt;
         } catch (e) {
-            dbInfoDiv.textContent = 'DB Status Unknown';
+            if (dbInfoDiv) dbInfoDiv.textContent = 'DB Status Unknown';
+            if (dbInfoMini) dbInfoMini.textContent = 'DB Status Unknown';
         }
 
-        // Dummy conversation history for now
-        appendMessageDOM({ type: 'bot', content: "Hello! I'm Analytica AI. How can I help query your data?" });
+        // Load inference mode (model selection from settings)
+        try {
+            const label = document.getElementById('model-label') || null;
+            const r = await fetch('/api/settings/inference');
+            const j = await r.json();
+            currentInference = (j && j.inference) || 'gemini';
+            if (label) {
+                if (currentInference === 'local') {
+                    label.textContent = 'SQLCoder (Local Only)';
+                } else {
+                    label.textContent = 'Gemini + SQLCoder (Hybrid)';
+                }
+            }
+        } catch (e) {
+            currentInference = 'gemini';
+            const label = document.getElementById('model-label') || null;
+            if (label) label.textContent = 'Unknown';
+        }
+
+        // Load auto summarize flag
+        try {
+            const r = await fetch('/api/settings/auto_summarize');
+            const j = await r.json();
+            autoSummarize = !!(j && j.auto_summarize);
+        } catch (e) {}
+
+        // Apply saved UI mode (default business)
+        try {
+            const mode = (window.AskUI && AskUI.getMode && AskUI.getMode()) || 'biz';
+            window.businessMode = (mode === 'biz');
+            const dev = document.getElementById('mode-dev'); const biz = document.getElementById('mode-biz');
+            if (dev && biz){
+                if (window.businessMode){ biz.classList.add('bg-blue-50'); dev.classList.remove('bg-blue-50'); }
+                else { dev.classList.add('bg-blue-50'); biz.classList.remove('bg-blue-50'); }
+            }
+        } catch(e){}
+
+        // Ensure a thread exists and load it
+        let curId = null;
+        try{
+            const list = await apiListThreads();
+            if(list.length){ curId = list[0].id; }
+            else { const t = await apiCreateThread('New Chat'); curId = t.id; }
+            // hidden holder
+            let hidden = document.getElementById('current-thread-id');
+            if(!hidden){ hidden = document.createElement('input'); hidden.type='hidden'; hidden.id='current-thread-id'; document.body.appendChild(hidden); }
+            hidden.value = curId;
+            await loadThread(curId);
+        }catch(e){ console.warn('Threads not available', e); }
 
         chatForm.addEventListener("submit", handleFormSubmit);
+
+        // New Session: clear chat area and start a fresh placeholder
+        const newBtn = document.getElementById('new-conversation-btn');
+        if (newBtn) {
+            newBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try{
+                    const t = await apiCreateThread('New Chat');
+                    const hidden = document.getElementById('current-thread-id'); if (hidden) hidden.value = t.id;
+                    await loadThread(t.id);
+                } catch(err) {
+                    if (window.AskUI && AskUI.toast) { AskUI.toast.info('Chat session limit reached or unavailable.'); }
+                }
+            });
+        }
+
+        const btnDev = document.getElementById('mode-dev');
+        const btnBiz = document.getElementById('mode-biz');
+        if (btnDev && btnBiz) {
+            btnDev.addEventListener('click', (e)=>{ e.preventDefault(); window.businessMode = false; btnDev.classList.add('bg-blue-50'); btnBiz.classList.remove('bg-blue-50'); });
+            btnBiz.addEventListener('click', (e)=>{ e.preventDefault(); window.businessMode = true; btnBiz.classList.add('bg-blue-50'); btnDev.classList.remove('bg-blue-50'); });
+        }
+
+        // Metadata explorer minimal modal
+        ensureExplorerModal();
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (t && t.id === 'open-explorer') { e.preventDefault(); openExplorer(); }
+            if (t && t.id === 'meta-close') { e.preventDefault(); closeExplorer(); }
+            if (t && t.id === 'meta-search') { e.preventDefault(); doSearch(); }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeExplorer();
+            if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'meta-q') doSearch();
+        });
     }
     
     initializeApp();
-</script>
+
+    // ---- Metadata Explorer helpers ----
+    function ensureExplorerModal() {
+        if (document.getElementById('meta-modal')) return;
+        const html = `
+        <div id="meta-modal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-40">
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+              <div class="flex items-center justify-between px-4 py-2 border-b">
+                <div class="font-semibold">Metadata Explorer</div>
+                <button id="meta-close" class="px-2 py-1 text-sm border rounded">Close</button>
+              </div>
+              <div class="p-3 flex items-center gap-2 border-b">
+                <input id="meta-q" type="text" class="flex-1 border rounded px-2 py-1" placeholder="Search assets..." />
+                <button id="meta-search" class="px-3 py-1 bg-blue-600 text-white rounded">Search</button>
+              </div>
+              <div id="meta-results" class="p-3 overflow-auto text-sm"></div>
+            </div>
+          </div>
+        </div>`;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        document.body.appendChild(wrap.firstElementChild);
+    }
+    function openExplorer(){ const m = document.getElementById('meta-modal'); if (m) { m.classList.remove('hidden'); const q = document.getElementById('meta-q'); if (q) q.focus(); } }
+    function closeExplorer(){ const m = document.getElementById('meta-modal'); if (m) m.classList.add('hidden'); }
+    async function doSearch(){
+        const qEl = document.getElementById('meta-q');
+        const cont = document.getElementById('meta-results');
+        if (!cont) return;
+        const q = qEl ? (qEl.value || '').trim() : '';
+        cont.textContent = 'Searching...';
+        try {
+            const r = await fetch(`/api/metadata/assets?q=${encodeURIComponent(q)}&limit=50`);
+            const j = await r.json();
+            const items = (j && j.results) || [];
+            cont.innerHTML = items.length ? items.map(it => `
+              <div class='border-b py-2'>
+                <div class='font-medium'>${it.DisplayName || it.Key}</div>
+                <div class='text-gray-600 text-xs'>${it.Key}</div>
+                <div class='text-gray-700'>${it.Description || ''}</div>
+                <div class='text-xs text-gray-500'>Tags: ${(it.Tags||[]).join(', ')}</div>
+              </div>`).join('') : 'No results';
+        } catch(e) {
+            cont.textContent = 'Search failed';
+        }
+    }
+    // Learning health footer
+    (async function(){
+      try{
+        const r = await fetch('/api/learn/health');
+        const j = await r.json();
+        const foot = document.createElement('div');
+        foot.className = 'text-xs text-gray-500 px-4 py-1';
+        if (j && !j.error){
+          const pct = Math.round((j.accuracy||0)*100);
+          const last = j.last_updated || '';
+          foot.textContent = `Learning Memory: ${j.examples} examples | ${pct}% accuracy | Last updated: ${last}`;
+        } else { foot.textContent = 'Learning status unavailable'; }
+        document.body.appendChild(foot);
+      }catch(e){}
+    })();
+  </script>
 </body>
 </html>
+
+
+
+

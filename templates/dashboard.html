@@ -14,6 +14,15 @@
   </style>
 </head>
 <body class="p-4">
+  <script>
+  // Apply theme immediately
+  (() => {
+    try {
+      const t = localStorage.getItem('theme') || 'blue';
+      document.documentElement.classList.toggle('light-grey', t === 'light-grey');
+    } catch (e) {}
+  })();
+  </script>
   <div class="max-w-7xl mx-auto">
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -171,13 +180,23 @@
     }
 
     async function loadJoins(){
-      const r = await fetch('/api/learn/metrics/joins?days=30'); const j = await r.json();
-      joinsBody.innerHTML = '';
-      (j||[]).forEach(row=>{
-        const tr = document.createElement('tr'); tr.className='border-b';
-        tr.innerHTML = `<td class='px-2 py-1 mono'>${row.left_table}</td><td class='px-2 py-1 mono'>${row.right_table}</td><td class='px-2 py-1'>${row.issues}</td><td class='px-2 py-1'>${Math.round(row.fail_rate*100)}%</td><td class='px-2 py-1'>${(row.samples||[]).join(', ')}</td>`;
-        joinsBody.appendChild(tr);
-      })
+      try {
+        const r = await fetch('/api/learn/metrics/joins?days=30'); 
+        const j = await r.json();
+        joinsBody.innerHTML = '';
+        
+        // Ensure j is an array
+        const joins = Array.isArray(j) ? j : [];
+        joins.forEach(row=>{
+          const tr = document.createElement('tr'); 
+          tr.className='border-b';
+          tr.innerHTML = `<td class='px-2 py-1 mono'>${row.left_table || ''}</td><td class='px-2 py-1 mono'>${row.right_table || ''}</td><td class='px-2 py-1'>${row.issues || ''}</td><td class='px-2 py-1'>${Math.round((row.fail_rate || 0)*100)}%</td><td class='px-2 py-1'>${(row.samples||[]).join(', ')}</td>`;
+          joinsBody.appendChild(tr);
+        });
+      } catch(e) {
+        console.error('Error loading joins:', e);
+        joinsBody.innerHTML = '<tr><td colspan="5" class="px-2 py-1 text-gray-500">Error loading data</td></tr>';
+      }
     }
 
     async function loadFeedbackTrend(){
