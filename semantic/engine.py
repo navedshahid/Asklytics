@@ -9,7 +9,7 @@ import os
 import yaml
 import json
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Set, Tuple
+from typing import Dict, List, Any, Optional, Set, Tuple, Sequence
 from datetime import datetime
 import re
 
@@ -20,6 +20,26 @@ try:
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
+
+PII_NAME_HINTS: Set[str] = {
+    "email",
+    "phone",
+    "first_name",
+    "lastname",
+    "last_name",
+    "fullname",
+    "ssn",
+    "tax",
+    "passport",
+    "address",
+    "street",
+    "city",
+    "zip",
+    "postal",
+    "dob",
+    "birth",
+}
+TIME_DTYPES = {"timestamp", "datetime", "datetime2", "date"}
 
 
 class SemanticEngine:
@@ -748,6 +768,235 @@ class SemanticEngine:
             "errors": self.load_errors
         }
 
+    def generate_entity_from_table(
+        self,
+        table_meta: Dict[str, Any],
+        *,
+        detect_pii: bool = True,
+        default_tags: Optional[Sequence[str]] = None,
+        name_override: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Derive an entity definition from raw database metadata."""
+        if not table_meta:
+            raise ValueError("table metadata required")
+        raw_name = name_override or table_meta.get("name")
+        if not raw_name:
+            raise ValueError("Table name missing")
+        safe_name = self._sanitize_filename(str(raw_name))
+        if not safe_name:
+            raise ValueError(f"Invalid entity name: {raw_name}")
+
+        columns_meta = table_meta.get("columns") or []
+        if not columns_meta:
+            raise ValueError(f"No columns provided for table {raw_name}")
+
+        grain = None
+        for col in columns_meta:
+            if col.get("primary"):
+                grain = col.get("name")
+                break
+        if not grain:
+            for col in columns_meta:
+                col_name = str(col.get("name") or "")
+                if col_name.lower().endswith("_id"):
+                    grain = col_name
+                    break
+        if not grain and columns_meta:
+            grain = columns_meta[0].get("name")
+
+        default_time_col = None
+        for col in columns_meta:
+            dtype = str(col.get("dtype") or col.get("source_type") or "").lower()
+            if dtype in TIME_DTYPES:
+                default_time_col = col.get("name")
+                break
+
+        tags: List[str] = []
+        schema = table_meta.get("schema")
+        if schema:
+            tags.append(str(schema).lower())
+        tags.append("auto-generated")
+        if default_tags:
+            tags.extend([str(tag) for tag in default_tags if tag])
+        deduped_tags: List[str] = []
+        for tag in tags:
+            if tag and tag not in deduped_tags:
+                deduped_tags.append(tag)
+
+        columns_payload: List[Dict[str, Any]] = []
+        for col in columns_meta:
+            col_name = str(col.get("name"))
+            dtype = str(col.get("dtype") or "string")
+            column_entry: Dict[str, Any] = {
+                "name": col_name,
+                "dtype": dtype,
+                "description": col.get("description") or col.get("source_type") or "",
+            }
+            if col.get("primary"):
+                column_entry["primary"] = True
+            pii_flag = col.get("pii")
+            if pii_flag or (detect_pii and self._is_pii_column(col_name, col.get("dtype") or col.get("source_type"))):
+                column_entry["pii"] = True
+            columns_payload.append(column_entry)
+
+        reference_table = (
+            table_meta.get("qualified_name")
+            or table_meta.get("full_name")
+            or table_meta.get("name")
+        )
+
+        entity: Dict[str, Any] = {
+            "name": safe_name,
+            "grain": grain,
+            "description": table_meta.get("description") or f"Semantic entity for {reference_table}",
+            "reference": {"table": reference_table},
+            "columns": columns_payload,
+            "tags": deduped_tags,
+        }
+
+        properties: Dict[str, Any] = {}
+        if default_time_col:
+            properties["default_time_col"] = default_time_col
+        default_filters = table_meta.get("default_filters")
+        if default_filters:
+            properties["default_filters"] = default_filters
+        if properties:
+            entity["properties"] = properties
+
+        return entity
+
+    # -----------------
+    # MDL CRUD: Entities
+    # -----------------
+    def save_entity(self, entity_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update an entity definition in MDL."""
+        try:
+            name = entity_data.get("name")
+            if not name:
+                return {"status": "error", "error": "Entity name required"}
+            safe_name = self._sanitize_filename(name)
+            if not safe_name or safe_name != name:
+                return {"status": "error", "error": "Invalid entity name"}
+            entity_file = self.mdl_root / "entities" / f"{safe_name}.yaml"
+            if not str(entity_file.resolve()).startswith(str(self.mdl_root.resolve())):
+                return {"status": "error", "error": "Invalid file path"}
+            entity_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(entity_file, "w", encoding="utf-8") as f:
+                yaml.dump(entity_data, f, default_flow_style=False, sort_keys=False)
+            self.load()
+            return {"status": "success", "name": name, "path": str(entity_file)}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    def _is_pii_column(self, column_name: str, dtype_hint: Optional[str]) -> bool:
+        """Best-effort PII detection using column names."""
+        if not column_name:
+            return False
+        dtype = (dtype_hint or "string").lower()
+        if dtype not in {"string", "text", "varchar", "nvarchar", "nchar", "char"}:
+            return False
+        norm = column_name.lower()
+        return any(hint in norm for hint in PII_NAME_HINTS)
+
+    def delete_entity(self, name: str) -> Dict[str, Any]:
+        """Delete an entity from MDL."""
+        try:
+            safe_name = self._sanitize_filename(name)
+            if not safe_name or safe_name != name:
+                return {"status": "error", "error": "Invalid entity name"}
+            entity_file = self.mdl_root / "entities" / f"{safe_name}.yaml"
+            if not str(entity_file.resolve()).startswith(str(self.mdl_root.resolve())):
+                return {"status": "error", "error": "Invalid file path"}
+            if entity_file.exists():
+                entity_file.unlink()
+                self.load()
+                return {"status": "success", "name": name}
+            return {"status": "error", "error": "Entity not found"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    # -----------------
+    # MDL CRUD: Metrics
+    # -----------------
+    def save_metric(self, metric_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update a metric definition in MDL."""
+        try:
+            name = metric_data.get("name")
+            if not name:
+                return {"status": "error", "error": "Metric name required"}
+            safe_name = self._sanitize_filename(name)
+            if not safe_name or safe_name != name:
+                return {"status": "error", "error": "Invalid metric name"}
+            metric_file = self.mdl_root / "metrics" / f"{safe_name}.yaml"
+            if not str(metric_file.resolve()).startswith(str(self.mdl_root.resolve())):
+                return {"status": "error", "error": "Invalid file path"}
+            metric_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(metric_file, "w", encoding="utf-8") as f:
+                yaml.dump(metric_data, f, default_flow_style=False, sort_keys=False)
+            self.load()
+            return {"status": "success", "name": name, "path": str(metric_file)}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    def delete_metric(self, name: str) -> Dict[str, Any]:
+        """Delete a metric from MDL."""
+        try:
+            safe_name = self._sanitize_filename(name)
+            if not safe_name or safe_name != name:
+                return {"status": "error", "error": "Invalid metric name"}
+            metric_file = self.mdl_root / "metrics" / f"{safe_name}.yaml"
+            if not str(metric_file.resolve()).startswith(str(self.mdl_root.resolve())):
+                return {"status": "error", "error": "Invalid file path"}
+            if metric_file.exists():
+                metric_file.unlink()
+                self.load()
+                return {"status": "success", "name": name}
+            return {"status": "error", "error": "Metric not found"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    # -----------------
+    # MDL Validation & Snapshot
+    # -----------------
+    def validate_mdl(self) -> Dict[str, Any]:
+        """Validate references across entities, metrics, and relations."""
+        errors: List[str] = []
+        warnings: List[str] = []
+
+        # Validate relations reference existing models/columns
+        for rel_name, rel in self.relations.items():
+            f_model = rel.get("from", {}).get("model")
+            f_col = rel.get("from", {}).get("column")
+            t_model = rel.get("to", {}).get("model")
+            t_col = rel.get("to", {}).get("column")
+            if f_model and f_model not in self.entities:
+                errors.append(f"relation {rel_name}: from.model '{f_model}' not found")
+            if t_model and t_model not in self.entities:
+                errors.append(f"relation {rel_name}: to.model '{t_model}' not found")
+            if f_model in self.entity_columns and f_col and f_col not in self.entity_columns[f_model]:
+                errors.append(f"relation {rel_name}: from.column '{f_col}' not in entity '{f_model}'")
+            if t_model in self.entity_columns and t_col and t_col not in self.entity_columns[t_model]:
+                errors.append(f"relation {rel_name}: to.column '{t_col}' not in entity '{t_model}'")
+
+        # Validate metrics reference existing entities
+        for metric_name, metric in self.metrics.items():
+            ent = metric.get("entity")
+            if ent and ent not in self.entities:
+                errors.append(f"metric {metric_name}: entity '{ent}' not found")
+            if not metric.get("sql"):
+                warnings.append(f"metric {metric_name}: missing SQL")
+
+        return {"status": "ok" if not errors else "invalid", "errors": errors, "warnings": warnings}
+
+    def snapshot(self) -> Dict[str, Any]:
+        """Return a full MDL snapshot in memory (entities, metrics, relations, policies)."""
+        return {
+            "entities": self.entities,
+            "metrics": self.metrics,
+            "relations": self.relations,
+            "policies": self.policies,
+            "graph": self.build_graph(),
+        }
     def save_relation(self, relation_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Save a new or updated relation to MDL.

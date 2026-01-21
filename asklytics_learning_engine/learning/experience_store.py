@@ -161,6 +161,21 @@ def _rows_to_xp(rows: Iterable[Tuple]) -> List[Experience]:
     return out
 
 
+def get_experience(xp_id: int) -> Optional[Experience]:
+    """Fetch a single experience by id."""
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id,user_prompt,generated_sql,validated_sql,schema_context,result_signature,"
+            "score,success,feedback,provider,timestamp,exec_ms,error_type,tables_used,joins,"
+            "validation_signals,confidence_score,confidence_label FROM xp WHERE id=?",
+            (int(xp_id),),
+        ).fetchone()
+    if not row:
+        return None
+    xp_list = _rows_to_xp([row])
+    return xp_list[0] if xp_list else None
+
+
 def get_all_experiences(limit: Optional[int] = None) -> List[Experience]:
     with _conn() as con:
         q = (

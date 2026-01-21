@@ -767,6 +767,20 @@
             }
         }
 
+        async function syncInferenceMode() {
+            try {
+                const resp = await fetch('/api/settings/inference');
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const mode = (data.inference_mode || 'gemini').toLowerCase();
+                safeLocalStorage('set', 'inferenceMode', mode);
+                return mode;
+            } catch (e) {
+                console.warn('Unable to sync inference mode; defaulting to gemini:', e);
+                return safeLocalStorage('get', 'inferenceMode') || 'gemini';
+            }
+        }
+
         function getOrCreateSessionId() {
             const existing = safeLocalStorage('get', 'currentSessionId');
             if (existing) return existing;
@@ -814,13 +828,45 @@
                 }
                 
                 history.forEach(msg => {
-                    addMessage(msg.content, msg.type, false, msg.id, msg.addFeedback || false);
+                    const allowFeedback = !!msg.xp_id;
+                    const renderedId = addMessage(msg.content, msg.type, false, msg.id, allowFeedback);
+                    if (msg.xp_id && allowFeedback) {
+                        messageXpMap[renderedId] = msg.xp_id;
+                    }
                 });
                 
                 feather.replace();
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             } catch (e) {
                 console.error('Error loading chat history:', e);
+            }
+        }
+
+        function saveLastResult() {
+            try {
+                if (currentResultData) {
+                    safeLocalStorage('set', 'lastResult_' + currentSessionId, JSON.stringify(currentResultData));
+                }
+            } catch (e) {
+                console.warn('Unable to persist last result:', e);
+            }
+        }
+
+        function loadLastResult() {
+            try {
+                const dataJson = safeLocalStorage('get', 'lastResult_' + currentSessionId);
+                if (!dataJson) return;
+                const data = JSON.parse(dataJson);
+                if (data && data.columns && data.rows) {
+                    currentResultData = data;
+                    if (!isResultsPanelOpen) toggleResultsPanel();
+                    currentTab = 'summary';
+                    document.querySelectorAll('.results-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelector('[data-tab="summary"]').classList.add('active');
+                    renderSummaryTab();
+                }
+            } catch (e) {
+                console.warn('Unable to restore last result:', e);
             }
         }
 
@@ -849,6 +895,8 @@
         let currentTab = 'summary';
         let currentResultData = null;
         let chatHistory = [];
+        let lastXpId = null;
+        const messageXpMap = {};
 
         // DOM Elements
         const sidebar = document.getElementById('sidebar');
@@ -1024,36 +1072,65 @@
         function renderVisualsTab() {
             const { columns, rows } = currentResultData;
             
-            if (!columns || !rows || rows.length === 0 || columns.length < 2) {
+            if (!columns || !rows || rows.length === 0) {
                 resultsContent.innerHTML = `
                     <div class="results-empty">
                         <i data-feather="bar-chart-2" class="w-12 h-12"></i>
                         <p>No chart data available</p>
-                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Need at least 2 columns to visualize</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">Need at least 1 column to visualize</p>
                     </div>
                 `;
                 feather.replace();
                 return;
             }
 
+            // pick defaults: first non-numeric as label, first numeric as value
+            const sample = rows[0] || {};
+            const numericCols = columns.filter(c => {
+                const v = Array.isArray(sample) ? sample[columns.indexOf(c)] : sample[c];
+                return typeof v === 'number' && !Number.isNaN(v);
+            });
+            let defaultLabel = columns.find(c => !numericCols.includes(c)) || columns[0];
+            let defaultValue = numericCols[0] || "";
+
             resultsContent.innerHTML = `
                 <div class="chart-container">
-                    <div class="chart-header">
+                    <div class="chart-header" style="gap: 0.75rem; flex-wrap: wrap;">
                         <div class="chart-title">Data Visualization</div>
-                        <button class="save-chart-btn" onclick="saveChart()">
-                            <i data-feather="download" class="w-3 h-3"></i>
-                            Save Image
-                        </button>
+                        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                            <label style="font-size:12px;">Label
+                                <select id="chartLabelSelect" class="form-select" style="padding:4px 6px; font-size:12px;">
+                                    ${columns.map(c => `<option value="${c}" ${c===defaultLabel?'selected':''}>${c}</option>`).join('')}
+                                </select>
+                            </label>
+                            <label style="font-size:12px;">Value
+                                <select id="chartValueSelect" class="form-select" style="padding:4px 6px; font-size:12px;">
+                                    <option value="">(count rows)</option>
+                                    ${numericCols.map(c => `<option value="${c}" ${c===defaultValue?'selected':''}>${c}</option>`).join('')}
+                                </select>
+                            </label>
+                            <button class="save-chart-btn" onclick="saveChart()">
+                                <i data-feather="download" class="w-3 h-3"></i>
+                                Save Image
+                            </button>
+                        </div>
                     </div>
                     <canvas id="resultChart" width="400" height="250"></canvas>
                 </div>
             `;
             feather.replace();
             
-            createChart({columns, rows});
+            const renderChart = () => {
+                const labelCol = document.getElementById('chartLabelSelect').value;
+                const valueCol = document.getElementById('chartValueSelect').value;
+                createChart({columns, rows}, labelCol, valueCol);
+            };
+            document.getElementById('chartLabelSelect').addEventListener('change', renderChart);
+            document.getElementById('chartValueSelect').addEventListener('change', renderChart);
+            renderChart();
         }
 
-        function createChart(data) {
+        function createChart(data, labelCol, valueCol) {
             if (currentChart) {
                 currentChart.destroy();
             }
@@ -1063,16 +1140,31 @@
             
             const labels = [];
             const values = [];
-            
-            data.rows.slice(0, 10).forEach(row => {
-                if (Array.isArray(row)) {
-                    labels.push(String(row[0] || ''));
-                    values.push(parseFloat(row[1]) || 0);
-                } else {
-                    const cols = Object.keys(row);
-                    labels.push(String(row[cols[0]] || ''));
-                    values.push(parseFloat(row[cols[1]]) || 0);
-                }
+
+            // Aggregate by label: sum value or count
+            const sampleRow = data.rows[0] || {};
+            const lbl = labelCol || data.columns[0];
+            const valCol = valueCol || "";
+            const useCount = !valCol;
+            const agg = {};
+
+            data.rows.forEach(row => {
+                const getVal = (colName) => {
+                    if (!colName) return null;
+                    if (Array.isArray(row)) {
+                        const idx = data.columns.indexOf(colName);
+                        return idx >= 0 ? row[idx] : null;
+                    }
+                    return row[colName];
+                };
+                const key = String(getVal(lbl) || '');
+                const val = useCount ? 1 : parseFloat(getVal(valCol)) || 0;
+                agg[key] = (agg[key] || 0) + val;
+            });
+
+            Object.entries(agg).slice(0, 10).forEach(([k, v]) => {
+                labels.push(k);
+                values.push(v);
             });
             
             currentChart = new Chart(ctx, {
@@ -1136,9 +1228,10 @@
             saveChatHistory(chatHistory);
             
             const loadingId = addMessage('', 'assistant', true);
+            lastXpId = null;
             
             try {
-                const inferenceMode = safeLocalStorage('get', 'inferenceMode') || 'gemini';
+                const inferenceMode = await syncInferenceMode();
                 const apiEndpoint = inferenceMode === 'sqlcoder' ? '/api/ask/stream' : '/api/gemini_ask/stream';
                 
                 const response = await fetch(apiEndpoint, {
@@ -1202,6 +1295,10 @@
                                         tempResultData.provenance = event.data.provenance || {};
                                         break;
                                     
+                                    case 'xp_saved':
+                                        lastXpId = event.data.xp_id || null;
+                                        break;
+                                    
                                     case 'summary':
                                         if (!tempResultData.summary) {
                                             tempResultData.summary = event.data.text;
@@ -1234,9 +1331,21 @@
                 removeMessage(loadingId);
                 
                 if (assistantMessage) {
-                    const assistantMsgId = addMessage(assistantMessage, 'assistant', false, null, true);
-                    chatHistory.push({ id: assistantMsgId, type: 'assistant', content: assistantMessage, addFeedback: true });
+                    const hasXp = !!lastXpId;
+                    const assistantMsgId = addMessage(assistantMessage, 'assistant', false, null, hasXp);
+                    if (hasXp) {
+                        messageXpMap[assistantMsgId] = lastXpId;
+                        lastXpId = null;
+                    }
+                    chatHistory.push({
+                        id: assistantMsgId,
+                        type: 'assistant',
+                        content: assistantMessage,
+                        addFeedback: hasXp,
+                        xp_id: messageXpMap[assistantMsgId] || null
+                    });
                     saveChatHistory(chatHistory);
+                    saveLastResult();
                 }
                 
             } catch (error) {
@@ -1332,12 +1441,18 @@
         // Feedback submission
         async function submitFeedback(messageId, verdict) {
             try {
+                const xpId = messageXpMap[messageId];
+                if (!xpId) {
+                    alert('Unable to capture feedback because the experience ID was not recorded yet. Please rerun the query and try again.');
+                    return;
+                }
                 const response = await fetch('/api/feedback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         session_id: currentSessionId,
                         message_id: messageId,
+                        xp_id: xpId,
                         verdict: verdict,
                         userId: safeLocalStorage('get', 'userEmail') || 'anonymous',
                         theme: safeLocalStorage('get', 'theme') || 'blue',
@@ -1434,7 +1549,9 @@
         // Initialize on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
             loadDatabaseInfo();
+            syncInferenceMode();
             loadChatHistory();
+            loadLastResult();
             feather.replace();
         });
 

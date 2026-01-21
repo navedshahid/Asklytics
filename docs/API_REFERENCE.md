@@ -578,6 +578,85 @@ Description: "FK->Sales.Customer(CustomerID) | hint:endswithId"
 
 ---
 
+### List Database Tables (Semantic Bootstrap)
+
+Retrieve live database schema details (tables + columns) that can be converted into MDL entities.
+
+**Endpoint:** `GET /semantic/db/tables`
+
+**Authorization:** Any authenticated role; requires database connection to be configured.
+
+**Response:**
+```json
+{
+  "tables": [
+    {
+      "name": "Customers",
+      "schema": "dbo",
+      "full_name": "[dbo].[Customers]",
+      "qualified_name": "dbo.Customers",
+      "columns": [
+        {"name": "CustomerId", "dtype": "integer", "primary": true, "nullable": false},
+        {"name": "Email", "dtype": "string", "nullable": true, "description": "varchar(200)"}
+      ]
+    }
+  ]
+}
+```
+
+Each column entry includes the semantic data type, source type description, ordinal position, and whether it is nullable or part of the primary key. This payload mirrors what the UI builder uses when composing MDL entity files.
+
+---
+
+### Bulk Import Entities into Semantic MDL
+
+Generate MDL entity YAML files directly from selected database tables.
+
+**Endpoint:** `POST /semantic/entities/import`
+
+**Authorization:** `admin` role (writes YAML files under `semantic/mdl/entities`).
+
+**Request Body:**
+```json
+{
+  "tables": ["dbo.Customers", {"schema": "dbo", "table": "Orders"}],
+  "dry_run": false,
+  "detect_pii": true,
+  "name_prefix": "mdl_",
+  "tags": ["retail", "auto"],
+  "name_overrides": {
+    "dbo.Customers": "customer_master"
+  }
+}
+```
+
+- `tables` (array, required): List of table identifiers to convert. Accepts strings (`schema.table`, `[schema].[table]`, or `table`) or objects `{ "schema": "...", "table": "..." }`.
+- `dry_run` (bool, default `false`): When `true`, returns generated documents without writing to disk.
+- `detect_pii` (bool, default `true`): Applies name-based heuristics to flag likely PII columns.
+- `name_prefix` (string, optional): Prepends a prefix to every generated entity name.
+- `tags` (array, optional): Additional tags appended to each entity’s `tags` list.
+- `name_overrides` (object, optional): Mapping of `schema.table` (or table) → desired entity name.
+
+**Response (dry_run=false):**
+```json
+{
+  "status": "success",
+  "dry_run": false,
+  "count": 2,
+  "entities": [
+    {"table": "dbo.Customers", "name": "mdl_customer_master", "path": "semantic/mdl/entities/mdl_customer_master.yaml"},
+    {"table": "dbo.Orders", "name": "mdl_orders", "path": "semantic/mdl/entities/mdl_orders.yaml"}
+  ],
+  "errors": []
+}
+```
+
+When `dry_run=true`, the `entities` array contains the full entity payload (`name`, `grain`, `columns`, `properties`, etc.) so you can preview the YAML that would be written.
+
+**PII Detection:** Columns whose names contain keywords like `email`, `phone`, `first_name`, etc., are automatically marked with `pii: true` (string-like columns only). You can still edit the resulting YAML to fine-tune tags or descriptions.
+
+---
+
 ### Metadata Health Check
 
 Check metadata system status.
@@ -1570,4 +1649,3 @@ Import the Postman collection for interactive API testing:
 
 *Last Updated: October 30, 2025*
 *API Version: 1.0.0*
-

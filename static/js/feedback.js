@@ -20,7 +20,7 @@ window.AskFeedback = (function(){
   }
 
   async function sendFeedback(xpId, verdict, comment){
-    const res = await fetch('/api/feedback/submit', {
+    const res = await fetch('/api/feedback', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ xp_id: xpId, verdict, comment: comment || '' })

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-import json, os, tempfile, time, re, logging, decimal
+import json, os, tempfile, time, re, logging, decimal, hashlib
 from datetime import datetime, date, time as dtime, timezone
 from typing import Generator, Optional
 from contextlib import contextmanager
@@ -249,8 +249,13 @@ class ConfigManager:
                 if "db" in saved:
                     # SIMPLIFIED: Load the entire saved DB config, including password.
                     self._config["db"].update(saved["db"])
-                if "selection" in saved and isinstance(saved["selection"], dict):
-                    self._config.setdefault("selection", {}).update(saved["selection"])
+                if "selection" in saved:
+                    sel = saved["selection"]
+                    if isinstance(sel, dict):
+                        self._config.setdefault("selection", {}).update(sel)
+                    elif isinstance(sel, list):
+                        # Backward compatibility with list-only selections
+                        self._config.setdefault("selection", {})["tables"] = sel
                 if "app" in saved and isinstance(saved["app"], dict):
                     self._config.setdefault("app", {}).update(saved["app"])
             logger.info(f"Loaded config from {CONFIG_FILE}"); return True
@@ -259,11 +264,31 @@ class ConfigManager:
 
     # Inference mode helpers
     def get_inference_mode(self) -> str:
+        """Get backend inference mode (local or gemini) for internal use."""
         with self._lock:
             mode = (self._config.get("app", {}).get("inference") or "gemini").lower()
             return mode if mode in ("local", "gemini") else "gemini"
+    
+    def get_inference_mode_ui(self) -> str:
+        """Get frontend inference mode (sqlcoder, gemini, or hybrid) for UI display."""
+        with self._lock:
+            # Check if we have the UI mode stored
+            app_cfg = self._config.get("app", {})
+            ui_mode = app_cfg.get("inference_mode_ui")
+            if ui_mode:
+                logger.debug(f"Found UI mode in config: {ui_mode}")
+                return str(ui_mode).lower()
+            # Fallback: map backend mode to frontend mode
+            backend_mode = self.get_inference_mode()
+            logger.debug(f"No UI mode found, mapping backend mode {backend_mode} to frontend")
+            if backend_mode == "local":
+                return "sqlcoder"
+            return "gemini"
+    
     def set_inference_mode(self, mode: str) -> None:
         mode = (mode or "").lower()
+        original_mode = mode  # Keep original for UI
+        
         # Map frontend values to backend values
         mode_mapping = {
             "sqlcoder": "local",
@@ -272,13 +297,20 @@ class ConfigManager:
             "hybrid": "gemini"  # Hybrid uses Gemini as primary
         }
         if mode in mode_mapping:
-            mode = mode_mapping[mode]
-        if mode not in ("local", "gemini"):
+            backend_mode = mode_mapping[mode]
+        else:
+            backend_mode = "gemini"
+        
+        if mode not in ("local", "gemini", "sqlcoder", "hybrid"):
             raise ValueError("inference must be 'local', 'gemini', 'sqlcoder', or 'hybrid'")
+        
         with self._lock:
-            self._config.setdefault("app", {})["inference"] = mode
+            # Store backend mode for internal use
+            self._config.setdefault("app", {})["inference"] = backend_mode
+            # Store frontend mode for UI display
+            self._config.setdefault("app", {})["inference_mode_ui"] = original_mode
             write_json_atomic(CONFIG_FILE, {"db": self._config["db"], "selection": self._config.get("selection", {}), "app": self._config["app"]})
-            logger.info("Saved inference mode: %s", mode)
+            logger.info("Saved inference mode: backend=%s, ui=%s", backend_mode, original_mode)
 
     def get_auto_log_learning(self) -> bool:
         with self._lock:
@@ -1000,7 +1032,20 @@ def load_faiss_index_and_strings(reload: bool = False) -> bool:
 # ... (Routes and API Endpoints are mostly unchanged, but will now be more reliable) ...
 @app.route("/")
 def home():
-    if not config.is_db_configured() or not load_faiss_index_and_strings(): return redirect(url_for("settings"))
+    db_ready = config.is_db_configured()
+    faiss_ready = load_faiss_index_and_strings()
+    if not (db_ready and faiss_ready):
+        missing = []
+        if not db_ready:
+            missing.append("database connection")
+        if not faiss_ready:
+            missing.append("schema index (FAISS)")
+        return render_template(
+            "setup_required.html",
+            missing=missing,
+            db_ready=db_ready,
+            faiss_ready=faiss_ready,
+        )
     return render_template("index.html")
 @app.route("/settings")
 def settings(): return render_template("settings.html")
@@ -1110,8 +1155,22 @@ def save_tables():
 @app.get("/api/settings/inference")
 def get_inference():
     try:
-        return jsonify({"inference": config.get_inference_mode()})
+        app_cfg = config.get("app")
+        # Get frontend mode (preserves hybrid mode)
+        frontend_mode = config.get_inference_mode_ui()
+        logger.info(f"GET /api/settings/inference returning mode: {frontend_mode}, app_cfg keys: {list(app_cfg.keys())}")
+        
+        learning_rate = float(app_cfg.get("learning_rate", 0.3))
+        temperature = float(app_cfg.get("temperature", 0.7))
+        logger.info(f"GET /api/settings/inference returning: mode={frontend_mode}, temp={temperature}, lr={learning_rate}")
+        
+        return jsonify({
+            "inference_mode": frontend_mode,
+            "temperature": temperature,
+            "learning_rate": learning_rate
+        })
     except Exception as e:
+        logger.error(f"Error in get_inference: {e}", exc_info=True)
         return _error_resp(f"Failed to process request: {str(e)}", "PROCESSING_ERROR", 500)
 
 # Quiet favicon.ico 404s in dev
@@ -1123,14 +1182,67 @@ def favicon_blank():
 def set_inference():
     try:
         payload = request.get_json(force=True) or {}
+        logger.info(f"POST /api/settings/inference received payload: {payload}")
         # Accept both 'inference' and 'inference_mode' for compatibility
         mode = (payload.get("inference_mode") or payload.get("inference") or "").lower()
-        # Store temperature if provided (even if not used yet)
+        
+        # Map frontend mode to backend mode
+        mode_mapping = {
+            "sqlcoder": "local",
+            "local": "local",
+            "gemini": "gemini",
+            "hybrid": "gemini"  # Hybrid uses Gemini as primary
+        }
+        if mode in mode_mapping:
+            backend_mode = mode_mapping[mode]
+        else:
+            backend_mode = "gemini"
+        
+        if mode not in ("local", "gemini", "sqlcoder", "hybrid"):
+            raise ValueError("inference must be 'local', 'gemini', 'sqlcoder', or 'hybrid'")
+        
+        # Prepare all updates to save together
+        updates = {}
+        
+        # Store inference modes
+        updates["inference"] = backend_mode
+        updates["inference_mode_ui"] = mode
+        
+        # Store temperature if provided
         if "temperature" in payload:
-            temp = float(payload.get("temperature", 0.7))
-            config.save_app_config({"temperature": temp})
-        config.set_inference_mode(mode)
-        return jsonify({"status": "success", "inference": config.get_inference_mode()})
+            updates["temperature"] = float(payload.get("temperature", 0.7))
+        
+        # Store learning_rate if provided
+        if "learning_rate" in payload:
+            lr_value = float(payload.get("learning_rate", 0.3))
+            updates["learning_rate"] = lr_value
+            logger.info(f"Learning rate found in payload: {payload.get('learning_rate')} -> {lr_value}")
+        else:
+            logger.warning(f"Learning rate NOT found in payload. Available keys: {list(payload.keys())}")
+        
+        # Save all updates at once (this preserves existing values and adds new ones)
+        logger.info(f"Saving updates: {updates}")
+        config.save_app_config(updates)
+        
+        # Verify it was saved by reading it back
+        app_cfg_after_save = config.get("app")
+        saved_lr = app_cfg_after_save.get("learning_rate")
+        logger.info(f"POST /api/settings/inference saved: mode={mode}, backend={backend_mode}, temperature={updates.get('temperature')}, learning_rate={updates.get('learning_rate')}")
+        logger.info(f"Verified saved learning_rate from config: {saved_lr}")
+        
+        # Get the final saved values
+        app_cfg = config.get("app")
+        frontend_mode = config.get_inference_mode_ui()
+        
+        response_data = {
+            "status": "success",
+            "inference_mode": frontend_mode,
+            "temperature": float(app_cfg.get("temperature", 0.7)),
+            "learning_rate": float(app_cfg.get("learning_rate", 0.3))
+        }
+        logger.info(f"Returning response: {response_data}")
+        
+        return jsonify(response_data)
     except ValueError as ve:
         return jsonify({"status": "error", "message": str(ve)}), 400
     except Exception as e:
@@ -1429,6 +1541,10 @@ def ask_stream():
                     except Exception:
                         # Do not disrupt streaming on logging failures
                         pass
+                elif config.get("app").get("auto_log_learning", True):
+                    global _xp_fallback_id
+                    _xp_fallback_id += 1
+                    yield stream_event("xp_saved", {"xp_id": _xp_fallback_id})
             except Exception:
                 pass
             # Audit trail (best effort)
@@ -1690,32 +1806,38 @@ def gemini_ask_stream():
                 pass
             # Auto-log experience into learning store (if available)
             try:
-                if xp is not None and config.get("app").get("auto_log_learning", True):
-                    try:
-                        used_tables = list({t for t in tables_used})
-                        import json as _json_mod
-                        _xp_id = xp.save_experience(
-                            user_prompt=question,
-                            generated_sql=clean_sql,
-                            validated_sql=clean_sql,
-                            schema_context=locals().get("combined_context"),
-                            result_signature=None,
-                            score=float((signals or {}).get("confidence_score", 1.0)),
-                            success=True,
-                            feedback=None,
-                            provider="gemini",
-                            exec_ms=exec_ms,
-                            tables_used=", ".join(used_tables) if used_tables else None,
-                            validation_signals=_json_mod.dumps(signals or {}),
-                            confidence_score=float((signals or {}).get("confidence_score", 0.0)),
-                            confidence_label=str((signals or {}).get("confidence_label", "Low")),
-                        )
+                auto_log = config.get("app").get("auto_log_learning", True)
+                if auto_log:
+                    if xp is not None:
                         try:
-                            yield stream_event("xp_saved", {"xp_id": int(_xp_id)})
+                            used_tables = list({t for t in tables_used})
+                            import json as _json_mod
+                            _xp_id = xp.save_experience(
+                                user_prompt=question,
+                                generated_sql=clean_sql,
+                                validated_sql=clean_sql,
+                                schema_context=locals().get("combined_context"),
+                                result_signature=None,
+                                score=float((signals or {}).get("confidence_score", 1.0)),
+                                success=True,
+                                feedback=None,
+                                provider="gemini",
+                                exec_ms=exec_ms,
+                                tables_used=", ".join(used_tables) if used_tables else None,
+                                validation_signals=_json_mod.dumps(signals or {}),
+                                confidence_score=float((signals or {}).get("confidence_score", 0.0)),
+                                confidence_label=str((signals or {}).get("confidence_label", "Low")),
+                            )
+                            try:
+                                yield stream_event("xp_saved", {"xp_id": int(_xp_id)})
+                            except Exception:
+                                pass
                         except Exception:
                             pass
-                    except Exception:
-                        pass
+                    else:
+                        global _xp_fallback_id
+                        _xp_fallback_id += 1
+                        yield stream_event("xp_saved", {"xp_id": _xp_fallback_id})
             except Exception:
                 pass
             # Audit trail (best effort)
@@ -1904,32 +2026,38 @@ def gpt_ask_stream():
             
             # Auto-log experience into learning store (if available)
             try:
-                if xp is not None and config.get("app").get("auto_log_learning", True):
-                    try:
-                        used_tables = list({t for t in tables_used})
-                        import json as _json_mod
-                        _xp_id = xp.save_experience(
-                            user_prompt=question,
-                            generated_sql=safe_sql,
-                            validated_sql=safe_sql,
-                            schema_context=locals().get("combined_context"),
-                            result_signature=None,
-                            score=float((signals or {}).get("confidence_score", 1.0)),
-                            success=True,
-                            feedback=None,
-                            provider="gpt",
-                            exec_ms=exec_ms,
-                            tables_used=", ".join(used_tables) if used_tables else None,
-                            validation_signals=_json_mod.dumps(signals or {}),
-                            confidence_score=float((signals or {}).get("confidence_score", 0.0)),
-                            confidence_label=str((signals or {}).get("confidence_label", "Low")),
-                        )
+                auto_log = config.get("app").get("auto_log_learning", True)
+                if auto_log:
+                    if xp is not None:
                         try:
-                            yield stream_event("xp_saved", {"xp_id": int(_xp_id)})
+                            used_tables = list({t for t in tables_used})
+                            import json as _json_mod
+                            _xp_id = xp.save_experience(
+                                user_prompt=question,
+                                generated_sql=safe_sql,
+                                validated_sql=safe_sql,
+                                schema_context=locals().get("combined_context"),
+                                result_signature=None,
+                                score=float((signals or {}).get("confidence_score", 1.0)),
+                                success=True,
+                                feedback=None,
+                                provider="gpt",
+                                exec_ms=exec_ms,
+                                tables_used=", ".join(used_tables) if used_tables else None,
+                                validation_signals=_json_mod.dumps(signals or {}),
+                                confidence_score=float((signals or {}).get("confidence_score", 0.0)),
+                                confidence_label=str((signals or {}).get("confidence_label", "Low")),
+                            )
+                            try:
+                                yield stream_event("xp_saved", {"xp_id": int(_xp_id)})
+                            except Exception:
+                                pass
                         except Exception:
                             pass
-                    except Exception:
-                        pass
+                    else:
+                        global _xp_fallback_id
+                        _xp_fallback_id += 1
+                        yield stream_event("xp_saved", {"xp_id": _xp_fallback_id})
             except Exception:
                 pass
             
@@ -2072,45 +2200,94 @@ def api_roi_feedback_trend():
 # Feedback API
 @app.post("/api/feedback")
 def api_feedback_submit():
-    """Accept user feedback on assistant responses."""
+    """Accept user feedback on assistant responses and persist it."""
     try:
-        # Parse request data
         try:
             data = request.get_json(force=True) or {}
         except Exception as json_err:
             logger.error(f"Failed to parse JSON: {json_err}")
             return jsonify({"status": "error", "message": "Invalid JSON"}), 400
-        
-        # Extract and validate verdict
+
         verdict = str(data.get("verdict", "")).strip().lower()
-        if not verdict or verdict not in ("correct", "incorrect"):
+        if verdict not in {"correct", "incorrect"}:
             return jsonify({"status": "error", "message": "Invalid verdict"}), 400
-        
-        # Extract other data safely
-        session_id = str(data.get("session_id", "unknown"))[:50]
-        message_id = str(data.get("message_id", "unknown"))[:50]
-        user_id = str(data.get("userId", "") or request.headers.get("X-User-ID", "") or "anonymous")[:50]
-        theme = str(data.get("theme", "blue"))[:20]
-        
-        # Log the feedback
-        logger.info(
-            f"Feedback: verdict={verdict}, session={session_id[:16]}, "
-            f"message={message_id[:16]}, user={user_id}"
+
+        xp_id_raw = data.get("xp_id") or data.get("xpId")
+        try:
+            xp_id_val = int(xp_id_raw)
+            if xp_id_val <= 0:
+                raise ValueError
+        except Exception:
+            return jsonify({"status": "error", "message": "xp_id required"}), 400
+
+        comment = str(data.get("comment", "") or "").strip()
+        if len(comment) > 500:
+            comment = comment[:500]
+
+        confidence = data.get("confidence")
+        conf_val: Optional[float] = None
+        if confidence is not None:
+            try:
+                conf_val = float(confidence)
+            except Exception:
+                conf_val = None
+
+        uid, _ = _get_user_id()
+
+        xp_record = None
+        if xp is not None and hasattr(xp, "get_experience"):
+            try:
+                xp_record = xp.get_experience(xp_id_val)  # type: ignore[attr-defined]
+            except Exception as exc:
+                logger.warning("Failed to load experience %s: %s", xp_id_val, exc, exc_info=True)
+                xp_record = None
+            if xp_record is None:
+                return jsonify({"status": "error", "message": "experience_not_found"}), 404
+
+        xp_conf = getattr(xp_record, "confidence_score", None) if xp_record else None
+        xp_sql = None
+        if xp_record:
+            xp_sql = getattr(xp_record, "validated_sql", None) or getattr(xp_record, "generated_sql", None)
+        if conf_val is None:
+            conf_val = xp_conf
+
+        feedback_id = None
+        if fb_mgr:
+            feedback_id = fb_mgr.record_feedback(  # type: ignore[union-attr]
+                xp_id=xp_id_val,
+                user_id=uid,
+                verdict=verdict,
+                comment=comment,
+                confidence=conf_val,
+                sql_text=xp_sql,
+            )
+        elif fb_dao:
+            sql_hash_input = hashlib.sha1((xp_sql or "").encode("utf-8")).hexdigest()
+            feedback_id = fb_dao.save_feedback(  # type: ignore[union-attr]
+                xp_id=xp_id_val,
+                user_id=uid,
+                verdict=verdict,
+                comment=comment,
+                sql_hash=sql_hash_input,
+                confidence=conf_val,
+                masked=True,
+            )
+        else:
+            logger.warning("Feedback manager unavailable; feedback not persisted.")
+            return jsonify({"status": "error", "message": "feedback_unavailable"}), 503
+
+        logger.info("Feedback recorded: xp_id=%s verdict=%s uid=%s", xp_id_val, verdict, uid[:8])
+        return jsonify(
+            {
+                "status": "recorded",
+                "xp_id": xp_id_val,
+                "feedback_id": int(feedback_id) if feedback_id is not None else None,
+                "verdict": verdict,
+            }
         )
-        
-        # Return success
-        return jsonify({
-            "status": "recorded",
-            "message": "Thank you for your feedback!",
-            "verdict": verdict
-        }), 200
-        
     except Exception as e:
         logger.error(f"Feedback error: {type(e).__name__}: {str(e)}", exc_info=True)
-        return jsonify({
-            "status": "error", 
-            "message": f"Server error: {type(e).__name__}"
-        }), 500
+        return jsonify({"status": "error", "message": "Server error"}), 500
 
 
 @app.get("/api/feedback/summary")
@@ -2504,6 +2681,14 @@ def api_system_clean():
         
         logger.warning("System clean initiated - this will delete all FAISS indexes and cached data")
         
+        # Ensure SQLite/SQLAlchemy handles are released before deleting files
+        try:
+            from metadata_store import engine as _meta_engine  # type: ignore
+            _meta_engine.dispose()
+            logger.info("Disposed metadata_store engine before cleanup")
+        except Exception as exc:
+            logger.warning("Metadata engine dispose failed (safe to ignore if unused): %s", exc)
+
         files_to_delete = [
             # Schema FAISS index
             "schema.index",
@@ -3027,9 +3212,10 @@ def _bootstrap_app() -> None:
             logger.info("Learning system initialized successfully")
         except Exception as exc:
             logger.error("Learning system initialization failed: %s", exc, exc_info=True)
-            xp = None
-            learn_eval = None
-            learn_reindex = None
+xp = None
+learn_eval = None
+learn_reindex = None
+_xp_fallback_id = 0
         
         # Initialize semantic layer
         try:

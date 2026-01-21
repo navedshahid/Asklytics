@@ -2,32 +2,74 @@
   "db": {
     "driver": "ODBC Driver 17 for SQL Server",
     "server": "prod-sqlfci",
-    "database": "RetailHREvaluations",
+    "database": "CustomAppsD365",
     "uid": "sa",
     "pwd": "ecs@123",
     "timeout": 15,
-    "configured": true,
-    "dialect": "SQL Server",
-    "port": 1433
+    "trust_server_certificate": true,
+    "encrypt": true,
+    "port": 1433,
+    "configured": true
   },
-  "selection": {
-    "tables": [
-      "[dbo].[BM_Evaluation]",
-      "[dbo].[FM_Evaluation]",
-      "[dbo].[Gallery_Evaluation]",
-      "[dbo].[SalesTeam_Evaluation]"
-    ]
+  "llm": {
+    "model_path": "E:\\Personal\\AskLytics_MVP\\models\\sqlcoder-7b-2.q8_0.gguf",
+    "n_gpu_layers": 8,
+    "n_ctx": 8096,
+    "n_threads": 8
+  },
+  "faiss": {
+    "index_path": "schema.index",
+    "strings_path": "schema_strings.npy",
+    "retrieval_k": 7
+  },
+  "gemini": {
+    "api_key": "AIzaSyAx-skfngbNWkgmz2oq1ERPDo1I9hjZLis",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/models",
+    "model": "gemini-2.0-flash"
   },
   "app": {
     "env": "development",
     "inference": "gemini",
+    "inference_mode_ui": null,
     "auto_log_learning": true,
-    "auto_summarize": true,
-    "chat_session_limit": 4,
-    "temperature": 1.0,
+    "auto_summarize": false,
+    "chat_session_limit": 5,
+    "pii_masking": true,
+    "audit_logging": true,
+    "data_retention": 90,
+    "temperature": 0.1,
     "learning_rate": 0.3,
-    "pii_masking": false,
-    "audit_logging": false,
-    "data_retention": 90
-  }
+    "secret_key": "dev-secret-key"
+  },
+  "selection": [
+    "ECS_CLAIMCLEARANCEOFFER",
+    "ECS_CLAIMCUSTMSGLOG",
+    "ECS_CLAIMDATAAREAID",
+    "ECS_CLAIMDEFECT",
+    "ECS_CLAIMDEFECTTYPE",
+    "ECS_CLAIMINITIATE",
+    "ECS_CLAIMINITIATETYPE",
+    "ECS_CLAIMINVENTTABLE",
+    "ECS_CLAIMITEM",
+    "ECS_CLAIMITEMDIMENSION",
+    "ECS_CLAIMLASTRECEIVEDQTY",
+    "ECS_CLAIMMESSAGESETTING",
+    "ECS_CLAIMPERCENTAGE",
+    "ECS_CLAIMREPAIRMAN",
+    "ECS_CLAIMREPAIRTARGET",
+    "ECS_CLAIMREPAIRTYPE",
+    "ECS_CLAIMSALEINFO",
+    "ECS_CLAIMSALEINFO_DISCOUNT",
+    "ECS_CLAIMSTATUS",
+    "ECS_CLAIMSTORE",
+    "ECS_CLAIMSTOREACCESS",
+    "ECS_CLAIMSTOREWORKER",
+    "ECS_CLAIMTABLE",
+    "ECS_CLAIMTABLEHISTORY",
+    "ECS_CLAIMTRANSDEFECT",
+    "ECS_CLAIMTTYPE",
+    "ECS_CLAIMUSER",
+    "ECS_CLAIMUSERCOMPANY",
+    "ECS_CLAIMVENDOR"
+  ]
 }

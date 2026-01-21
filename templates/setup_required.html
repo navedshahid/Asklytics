@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Setup Required • AskLytics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800 flex items-center justify-center">
+  <div class="max-w-lg w-full bg-white shadow-lg rounded-xl p-8">
+    <div class="flex items-center gap-3 mb-4">
+      <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-yellow-100 text-yellow-600">
+        ⚠️
+      </span>
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">Setup Not Completed</h1>
+        <p class="text-sm text-gray-500">We need a few things before launching the chat experience.</p>
+      </div>
+    </div>
+
+    <ul class="space-y-3 mb-6">
+      {% if not db_ready %}
+      <li class="flex items-start gap-3">
+        <span class="mt-1 text-red-500">✖</span>
+        <div>
+          <p class="font-medium text-gray-900">Database connection missing</p>
+          <p class="text-sm text-gray-600">Open Settings &gt; Database, provide server credentials, and save the configuration.</p>
+        </div>
+      </li>
+      {% endif %}
+      {% if db_ready and not faiss_ready %}
+      <li class="flex items-start gap-3">
+        <span class="mt-1 text-yellow-500">⚠</span>
+        <div>
+          <p class="font-medium text-gray-900">Schema index not built</p>
+          <p class="text-sm text-gray-600">Click “Build Schema Index” under Settings so AskLytics can retrieve tables/columns.</p>
+        </div>
+      </li>
+      {% endif %}
+    </ul>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <a href="{{ url_for('ui.settings') }}"
+         class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+        Go to Settings
+      </a>
+      <button onclick="window.location.reload()" class="text-sm text-gray-600 hover:text-gray-900">
+        Refresh after finishing setup →
+      </button>
+    </div>
+  </div>
+</body>
+</html>

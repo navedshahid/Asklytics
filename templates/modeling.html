@@ -6,224 +6,438 @@
     <title>Semantic Modeling - AskLytics</title>
     <link rel="stylesheet" href="/static/css/asklytics.css">
     <style>
-        body {
+        * {
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #f5f7fa;
+            padding: 0;
+            box-sizing: border-box;
         }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 1.5rem 2rem;
+            padding: 1rem 1.5rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            position: relative;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 600;
-        }
-
-        .header p {
-            margin: 0.5rem 0 0 0;
-            opacity: 0.9;
-        }
-
-        .nav {
-            background: white;
-            padding: 0.75rem 2rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .nav a {
-            color: #667eea;
-            text-decoration: none;
-            margin-right: 1.5rem;
-            font-weight: 500;
-        }
-
-        .nav a:hover {
-            text-decoration: underline;
-        }
-
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            height: calc(100vh - 180px);
-        }
-
-        .erd-panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            padding: 1.5rem;
-            overflow: auto;
-        }
-
-        .relationships-panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            padding: 1.5rem;
-            overflow-y: auto;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .panel-header h2 {
             margin: 0;
-            font-size: 1.3rem;
-            color: #2d3748;
         }
 
-        .btn {
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
             padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .btn-primary {
-            background: #667eea;
             color: white;
-        }
-
-        .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #edf2f7;
-            color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-            background: #e2e8f0;
-        }
-
-        .btn-danger {
-            background: #fc8181;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #f56565;
-        }
-
-        .entity-card {
-            background: #f7fafc;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            display: inline-block;
-            min-width: 250px;
-            margin-right: 1rem;
-            vertical-align: top;
-        }
-
-        .entity-header {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: #667eea;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #cbd5e0;
-        }
-
-        .entity-column {
-            padding: 0.35rem 0;
+            text-decoration: none;
             font-size: 0.9rem;
-            color: #4a5568;
+            transition: background 0.2s;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-tab.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .header-right {
             display: flex;
-            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
         }
 
-        .entity-column .col-name {
-            font-weight: 500;
-        }
-
-        .entity-column .col-type {
-            color: #718096;
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
             font-size: 0.85rem;
         }
 
-        .entity-column.primary {
-            color: #667eea;
-            font-weight: 600;
+        /* Main Container */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 64px);
         }
 
-        .entity-column.pii {
-            color: #fc8181;
+        /* Left Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .relationship-card {
-            background: #f7fafc;
-            border-left: 4px solid #48bb78;
-            border-radius: 6px;
+        .sidebar-header {
             padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .relationship-header {
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
         }
 
-        .relationship-name {
+        .sidebar-header h2 {
+            font-size: 0.9rem;
             font-weight: 600;
             color: #2d3748;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .relationship-type {
-            display: inline-block;
-            padding: 0.25rem 0.5rem;
-            background: #48bb78;
-            color: white;
+        .sidebar-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: #edf2f7;
             border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: #4a5568;
+            transition: all 0.2s;
         }
 
-        .relationship-details {
+        .icon-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .model-list {
+            list-style: none;
+        }
+
+        .model-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
             font-size: 0.9rem;
             color: #4a5568;
-            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s;
         }
 
-        .relationship-arrow {
+        .model-item:hover {
+            background: #f7fafc;
+        }
+
+        .model-item.active {
+            background: #edf2f7;
             color: #667eea;
-            font-weight: bold;
-            margin: 0 0.5rem;
+            font-weight: 500;
         }
 
-        .menu-btn {
-            background: none;
+        .model-item-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .expand-icon {
+            width: 12px;
+            height: 12px;
+            opacity: 0.5;
+            transition: transform 0.2s;
+        }
+
+        .model-item.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: #fafbfc;
+            overflow: hidden;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.5;
+            z-index: 1;
+        }
+
+        .canvas-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            z-index: 3;
+        }
+
+        .relationship-line {
+            stroke: #94a3b8;
+            stroke-width: 2;
+            fill: none;
+            pointer-events: stroke;
+        }
+
+        /* Entity Card */
+        .entity-card {
+            position: absolute;
+            min-width: 280px;
+            max-width: 320px;
+            background: white;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: move;
+            user-select: none;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+
+        .entity-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .entity-card.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .entity-card-header {
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 6px 6px 0 0;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .entity-card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex: 1;
+        }
+
+        .entity-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .entity-action-btn {
             border: none;
-            color: #718096;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            font-size: 0.85rem;
             cursor: pointer;
-            font-size: 1.2rem;
-            padding: 0.25rem 0.5rem;
+            transition: background 0.2s;
         }
 
-        .menu-btn:hover {
+        .entity-action-btn:hover {
+            background: rgba(0,0,0,0.15);
+        }
+
+        .entity-card-body {
+            padding: 0.75rem;
+        }
+
+        .entity-section {
+            margin-bottom: 0.75rem;
+        }
+
+        .entity-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .entity-column-list {
+            list-style: none;
+        }
+
+        .entity-column-item {
+            padding: 0.35rem 0.5rem;
+            font-size: 0.85rem;
             color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s;
         }
 
+        .entity-column-item:hover {
+            background: #f7fafc;
+        }
+
+        .column-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            opacity: 0.6;
+        }
+
+        .column-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .column-type {
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+
+        .column-primary {
+            color: #667eea;
+        }
+
+        .column-pii {
+            color: #fc8181;
+        }
+
+        .relationship-section {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .relationship-item {
+            font-size: 0.8rem;
+            color: #667eea;
+            padding: 0.25rem 0.5rem;
+            margin: 0.25rem 0;
+            background: #edf2f7;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .relationship-item:hover {
+            background: #e2e8f0;
+        }
+
+        .relationship-item span {
+            flex: 1;
+        }
+
+        .relationship-delete-btn {
+            border: none;
+            background: transparent;
+            color: #c53030;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0.1rem 0.35rem;
+        }
+
+        /* Canvas Controls */
+        .canvas-controls {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 50;
+        }
+
+        .control-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #f7fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -267,6 +481,7 @@
             font-weight: 500;
             color: #4a5568;
             margin-bottom: 0.5rem;
+            font-size: 0.9rem;
         }
 
         .form-input, .form-select {
@@ -274,7 +489,7 @@
             padding: 0.75rem;
             border: 1px solid #cbd5e0;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .form-input:focus, .form-select:focus {
@@ -290,6 +505,35 @@
             margin-top: 2rem;
         }
 
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* Loading */
         .loading {
             text-align: center;
             padding: 2rem;
@@ -310,57 +554,56 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem 1rem;
-            color: #718096;
-        }
-
-        .empty-state-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
     </style>
 </head>
 <body>
+    <!-- Header -->
     <div class="header">
-        <h1>🎨 Semantic Modeling</h1>
-        <p>Define business entities, metrics, and relationships for your data model</p>
-    </div>
-
-    <div class="nav">
-        <a href="/">← Back to Chat</a>
-        <a href="/dashboard/governance">Governance</a>
-        <a href="/settings">Settings</a>
-    </div>
-
-    <div class="container">
-        <!-- ERD Panel -->
-        <div class="erd-panel">
-            <div class="panel-header">
-                <h2>Entity Relationship Diagram</h2>
-                <button class="btn btn-secondary" onclick="refreshERD()">🔄 Refresh</button>
+        <div class="header-left">
+            <h1>🎨 AskLytics Modeling</h1>
+            <div class="nav-tabs">
+                <a href="/" class="nav-tab">Home</a>
+                <a href="/modeling" class="nav-tab active">Modeling</a>
             </div>
-            <div id="erd-container">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Loading entities...</p>
+        </div>
+        <div class="header-right">
+            <div class="user-avatar">AS</div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Models (<span id="modelCount">0</span>)</h2>
+                <div class="sidebar-actions">
+                    <button class="icon-btn" onclick="refreshModels()" title="Refresh">⟳</button>
+                    <button class="icon-btn" onclick="openCreateRelationshipModal()" title="Add Relationship">+</button>
                 </div>
+            </div>
+            <div class="sidebar-content">
+                <ul class="model-list" id="modelList">
+                    <li class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading models...</p>
+                    </li>
+                </ul>
             </div>
         </div>
 
-        <!-- Relationships Panel -->
-        <div class="relationships-panel">
-            <div class="panel-header">
-                <h2>Relationships</h2>
-                <button class="btn btn-primary" onclick="openCreateRelationshipModal()">+ Relationship</button>
-            </div>
-            <div id="relationships-container">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Loading relationships...</p>
-                </div>
+        <!-- Canvas Area -->
+        <div class="canvas-container" id="canvasContainer">
+            <div class="canvas-grid"></div>
+            <svg class="canvas-svg" id="relationshipSvg"></svg>
+            <div class="canvas" id="canvas"></div>
+            
+            <!-- Canvas Controls -->
+            <div class="canvas-controls">
+                <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <button class="control-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                <button class="control-btn" onclick="fitToScreen()" title="Fit to Screen">⊞</button>
+                <button class="control-btn" onclick="refreshCanvas()" title="Refresh">⟳</button>
             </div>
         </div>
     </div>
@@ -431,5 +674,3 @@
     <script src="/static/js/modeling.js"></script>
 </body>
 </html>
-
-

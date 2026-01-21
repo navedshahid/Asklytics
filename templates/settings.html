@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Settings - AskLytics</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
     <link rel="stylesheet" href="/static/css/asklytics.css" />
     <style>
-        :root { 
+        :root {
             --primary-color: #6366f1;
             --primary-hover: #4f46e5;
             --success-color: #10b981;
@@ -28,31 +31,46 @@
             --gray-800: #1f2937;
             --gray-900: #111827;
         }
-        
-        * { box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--gray-50); 
-            color: var(--gray-800); 
-            margin: 0; 
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-800);
+            margin: 0;
             padding: 0;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
-        
+
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
-        
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+
         /* Layout */
         .settings-container {
             display: flex;
             min-height: 100vh;
         }
-        
+
         /* Sidebar */
         .settings-sidebar {
             width: 280px;
@@ -65,14 +83,14 @@
             height: 100vh;
             overflow-y: auto;
         }
-        
+
         .sidebar-header {
             padding: 1.5rem;
             border-bottom: 1px solid var(--gray-200);
             background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             color: white;
         }
-        
+
         .sidebar-title {
             font-size: 1.25rem;
             font-weight: 700;
@@ -80,16 +98,16 @@
             align-items: center;
             gap: 0.75rem;
         }
-        
+
         .sidebar-nav {
             flex: 1;
             padding: 1rem 0;
         }
-        
+
         .nav-section {
             margin-bottom: 2rem;
         }
-        
+
         .nav-section-title {
             font-size: 0.75rem;
             font-weight: 600;
@@ -99,7 +117,7 @@
             padding: 0 1.5rem;
             margin-bottom: 0.5rem;
         }
-        
+
         .nav-item {
             display: flex;
             align-items: center;
@@ -110,29 +128,29 @@
             transition: all 0.2s ease;
             border-left: 3px solid transparent;
         }
-        
+
         .nav-item:hover {
             background: var(--gray-50);
             color: var(--gray-900);
         }
-        
+
         .nav-item.active {
             background: var(--primary-color);
             color: white;
             border-left-color: var(--primary-hover);
         }
-        
+
         .nav-item i {
             width: 20px;
             height: 20px;
             flex-shrink: 0;
         }
-        
+
         .nav-item-text {
             font-size: 0.9375rem;
             font-weight: 500;
         }
-        
+
         /* Main Content */
         .settings-main {
             flex: 1;
@@ -140,7 +158,7 @@
             flex-direction: column;
             overflow: hidden;
         }
-        
+
         .settings-header {
             background: white;
             border-bottom: 1px solid var(--gray-200);
@@ -149,14 +167,14 @@
             align-items: center;
             justify-content: space-between;
         }
-        
+
         .settings-title {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--gray-900);
             margin: 0;
         }
-        
+
         .back-btn {
             display: flex;
             align-items: center;
@@ -167,26 +185,62 @@
             font-weight: 500;
             transition: color 0.2s ease;
         }
-        
+
         .back-btn:hover {
             color: var(--primary-color);
         }
-        
+
         .settings-content {
             flex: 1;
             padding: 2rem;
             overflow-y: auto;
         }
-        
+
         .settings-section {
             display: none;
             animation: fadeIn 0.3s ease-out;
         }
-        
+
         .settings-section.active {
             display: block;
         }
-        
+
+        .data-table {
+            width: 100%;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .data-table-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 120px;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--gray-100);
+            align-items: center;
+        }
+
+        .data-table-row.header {
+            background: var(--gray-50);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: var(--gray-600);
+        }
+
+        .data-table-row:last-child {
+            border-bottom: none;
+        }
+
+        .chip {
+            display: inline-flex;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: var(--gray-100);
+            font-size: 0.75rem;
+        }
+
         /* Cards */
         .settings-card {
             background: white;
@@ -196,14 +250,14 @@
             margin-bottom: 1.5rem;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
         }
-        
+
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 1rem;
         }
-        
+
         .card-title {
             font-size: 1.125rem;
             font-weight: 600;
@@ -212,18 +266,18 @@
             align-items: center;
             gap: 0.5rem;
         }
-        
+
         .card-description {
             color: var(--gray-600);
             font-size: 0.875rem;
             margin-top: 0.25rem;
         }
-        
+
         /* Form Elements */
         .form-group {
             margin-bottom: 1.5rem;
         }
-        
+
         .form-label {
             display: block;
             font-size: 0.875rem;
@@ -231,7 +285,7 @@
             color: var(--gray-700);
             margin-bottom: 0.5rem;
         }
-        
+
         .form-input {
             width: 100%;
             padding: 0.75rem;
@@ -241,13 +295,13 @@
             transition: all 0.2s ease;
             background: white;
         }
-        
+
         .form-input:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
-        
+
         .form-select {
             width: 100%;
             padding: 0.75rem;
@@ -257,25 +311,25 @@
             background: white;
             cursor: pointer;
         }
-        
+
         .form-checkbox {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             cursor: pointer;
         }
-        
+
         .form-checkbox input[type="checkbox"] {
             width: 1.125rem;
             height: 1.125rem;
             accent-color: var(--primary-color);
         }
-        
+
         .form-checkbox-label {
             font-size: 0.9375rem;
             color: var(--gray-700);
         }
-        
+
         /* Buttons */
         .btn {
             display: inline-flex;
@@ -290,57 +344,67 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
+
         .btn-primary {
             background: var(--primary-color);
             color: white;
         }
-        
+
         .btn-primary:hover {
             background: var(--primary-hover);
         }
-        
+
         .btn-secondary {
             background: var(--gray-100);
             color: var(--gray-700);
         }
-        
+
         .btn-secondary:hover {
             background: var(--gray-200);
         }
-        
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gray-600);
+            border: 1px solid var(--gray-200);
+        }
+
+        .btn-ghost:hover {
+            background: var(--gray-100);
+        }
+
         .btn-success {
             background: var(--success-color);
             color: white;
         }
-        
+
         .btn-success:hover {
             background: #059669;
         }
-        
+
         .btn-warning {
             background: var(--warning-color);
             color: white;
         }
-        
+
         .btn-warning:hover {
             background: #d97706;
         }
-        
+
         .btn-danger {
             background: var(--danger-color);
             color: white;
         }
-        
+
         .btn-danger:hover {
             background: #dc2626;
         }
-        
+
         .btn-sm {
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
         }
-        
+
         /* Task Status */
         .task-status {
             display: inline-flex;
@@ -351,22 +415,22 @@
             font-size: 0.75rem;
             font-weight: 500;
         }
-        
+
         .task-status.loading {
             background: #fef3c7;
             color: #92400e;
         }
-        
+
         .task-status.success {
             background: #d1fae5;
             color: #065f46;
         }
-        
+
         .task-status.error {
             background: #fee2e2;
             color: #991b1b;
         }
-        
+
         /* Task Log */
         .task-log {
             background: var(--gray-50);
@@ -378,7 +442,7 @@
             font-family: 'Roboto Mono', monospace;
             font-size: 0.8125rem;
         }
-        
+
         .log-entry {
             display: flex;
             align-items: center;
@@ -386,106 +450,123 @@
             padding: 0.25rem 0;
             border-bottom: 1px solid var(--gray-200);
         }
-        
+
         .log-entry:last-child {
             border-bottom: none;
         }
-        
+
         .log-time {
             color: var(--gray-500);
             font-size: 0.75rem;
         }
-        
+
         .log-status {
             font-weight: 500;
         }
-        
-        .log-status.loading { color: var(--warning-color); }
-        .log-status.success { color: var(--success-color); }
-        .log-status.error { color: var(--danger-color); }
-        
+
+        .log-status.loading {
+            color: var(--warning-color);
+        }
+
+        .log-status.success {
+            color: var(--success-color);
+        }
+
+        .log-status.error {
+            color: var(--danger-color);
+        }
+
         /* Grid Layouts */
         .grid-2 {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
         }
-        
+
         .grid-3 {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
         }
-        
+
         /* Responsive */
         @media (max-width: 1024px) {
             .settings-sidebar {
                 width: 240px;
             }
-            
+
             .grid-3 {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
-        
+
         @media (max-width: 768px) {
             .settings-container {
                 flex-direction: column;
             }
-            
+
             .settings-sidebar {
                 width: 100%;
                 height: auto;
                 position: static;
             }
-            
+
             .sidebar-nav {
                 display: flex;
                 overflow-x: auto;
                 padding: 0.5rem;
             }
-            
+
             .nav-section {
                 margin-bottom: 0;
                 margin-right: 1rem;
             }
-            
+
             .nav-item {
                 white-space: nowrap;
                 padding: 0.5rem 1rem;
             }
-            
+
             .settings-content {
                 padding: 1rem;
             }
-            
-            .grid-2, .grid-3 {
+
+            .grid-2,
+            .grid-3 {
                 grid-template-columns: 1fr;
             }
         }
-        
+
         /* Animations */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
+
         .fade-in {
             animation: fadeIn 0.3s ease-out;
         }
     </style>
 </head>
+
 <body>
     <script>
-    // Apply theme immediately (before render)
-    (() => {
-      try {
-        const t = localStorage.getItem('theme') || 'blue';
-        document.documentElement.classList.toggle('light-grey', t === 'light-grey');
-      } catch (e) {
-        console.warn('Theme load failed:', e);
-      }
-    })();
+        // Apply theme immediately (before render)
+        (() => {
+            try {
+                const t = localStorage.getItem('theme') || 'blue';
+                document.documentElement.classList.toggle('light-grey', t === 'light-grey');
+            } catch (e) {
+                console.warn('Theme load failed:', e);
+            }
+        })();
     </script>
     <div class="settings-container">
         <!-- Sidebar -->
@@ -516,7 +597,7 @@
                         <span class="nav-item-text">Learning</span>
                     </a>
                 </div>
-                
+
                 <div class="nav-section">
                     <div class="nav-section-title">Database</div>
                     <a href="#" class="nav-item" data-section="database">
@@ -527,8 +608,20 @@
                         <i data-feather="table"></i>
                         <span class="nav-item-text">Tables</span>
                     </a>
+                    <a href="#" class="nav-item" data-section="semantic">
+                        <i data-feather="git-merge"></i>
+                        <span class="nav-item-text">Semantic Models</span>
+                    </a>
                 </div>
-                
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Users & Security</div>
+                    <a href="#" class="nav-item" data-section="users">
+                        <i data-feather="users"></i>
+                        <span class="nav-item-text">Users & Access</span>
+                    </a>
+                </div>
+
                 <div class="nav-section">
                     <div class="nav-section-title">Advanced</div>
                     <a href="#" class="nav-item" data-section="tasks">
@@ -542,7 +635,7 @@
                 </div>
             </nav>
         </div>
-        
+
         <!-- Main Content -->
         <div class="settings-main">
             <div class="settings-header">
@@ -552,7 +645,7 @@
                     <span>Back to Chat</span>
                 </a>
             </div>
-            
+
             <div class="settings-content">
                 <!-- General Settings -->
                 <div class="settings-section active" id="general">
@@ -577,7 +670,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="settings-card">
                         <div class="card-header">
                             <div class="card-title">
@@ -606,7 +699,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Theme Settings -->
                 <div class="settings-section" id="theme">
                     <div class="settings-card">
@@ -622,18 +715,22 @@
                         <div class="form-group">
                             <label class="form-label">Color Scheme</label>
                             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <label class="form-checkbox" style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                <label class="form-checkbox"
+                                    style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
                                     <input type="radio" name="theme" value="blue" style="margin-right: 0.75rem;">
                                     <div>
                                         <div style="font-weight: 600; margin-bottom: 0.25rem;">Blue (Corporate)</div>
-                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Professional indigo color scheme</div>
+                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Professional indigo
+                                            color scheme</div>
                                     </div>
                                 </label>
-                                <label class="form-checkbox" style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                                <label class="form-checkbox"
+                                    style="display: flex; align-items: center; padding: 1rem; border: 2px solid var(--gray-200); border-radius: 0.5rem; cursor: pointer; transition: all 0.2s;">
                                     <input type="radio" name="theme" value="light-grey" style="margin-right: 0.75rem;">
                                     <div>
                                         <div style="font-weight: 600; margin-bottom: 0.25rem;">Light Grey</div>
-                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Subtle grey with slate accents</div>
+                                        <div style="font-size: 0.875rem; color: var(--gray-600);">Subtle grey with slate
+                                            accents</div>
                                     </div>
                                 </label>
                             </div>
@@ -647,7 +744,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Inference Settings -->
                 <div class="settings-section" id="inference">
                     <div class="settings-card">
@@ -670,8 +767,20 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Temperature</label>
-                            <input type="range" class="form-input" id="temperature" min="0" max="1" step="0.1" value="0.7">
-                            <div class="text-sm text-gray-600 mt-1">Controls randomness in responses (current: <span id="tempValue">0.7</span>)</div>
+                            <input type="range" class="form-input" id="temperature" min="0" max="1" step="0.1"
+                                value="0.7">
+                            <div class="text-sm text-gray-600 mt-1">Controls randomness in responses (current: <span
+                                    id="tempValue">0.7</span>)</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Learning Rate</label>
+                            <select class="form-select" id="inferenceLearningRate">
+                                <option value="0.1">Low (0.1)</option>
+                                <option value="0.3">Medium (0.3)</option>
+                                <option value="0.5">High (0.5)</option>
+                            </select>
+                            <div class="text-sm text-gray-600 mt-1">Controls how quickly the system learns from feedback
+                            </div>
                         </div>
                         <div class="flex items-center gap-3">
                             <button class="btn btn-primary" id="saveInferenceBtn">
@@ -682,7 +791,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Learning Settings -->
                 <div class="settings-section" id="learning">
                     <div class="settings-card">
@@ -718,7 +827,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Database Settings -->
                 <div class="settings-section" id="database">
                     <div class="settings-card">
@@ -752,7 +861,20 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Password</label>
-                                <input type="password" class="form-input" id="dbPassword" placeholder="Database password">
+                                <input type="password" class="form-input" id="dbPassword"
+                                    placeholder="Database password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="dbEncrypt" checked>
+                                    <span class="form-checkbox-label">Enable Encryption</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="dbTrust" checked>
+                                    <span class="form-checkbox-label">Trust Server Certificate</span>
+                                </label>
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
@@ -767,7 +889,7 @@
                             <div id="connectionStatus" class="text-sm"></div>
                         </div>
                     </div>
-                    
+
                     <div class="settings-card">
                         <div class="card-header">
                             <div class="card-title">
@@ -785,13 +907,13 @@
                         <div class="form-group">
                             <label class="form-label">Connection Status</label>
                             <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                <span class="text-sm text-gray-600">Connected</span>
+                                <div id="connectionIndicator" class="w-3 h-3 bg-gray-300 rounded-full"></div>
+                                <span id="connectionStatusText" class="text-sm text-gray-600">Checking...</span>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Tables Settings -->
                 <div class="settings-section" id="tables">
                     <div class="settings-card">
@@ -812,6 +934,9 @@
                             Choose which tables are available for queries
                         </div>
                         <div class="form-group">
+                            <input type="text" id="tableFilter" class="form-input" placeholder="Filter tables (e.g., claim)" />
+                        </div>
+                        <div class="form-group">
                             <div id="tablesList" class="space-y-2" style="max-height: 400px; overflow-y: auto;">
                                 <!-- Tables will be loaded here -->
                             </div>
@@ -825,7 +950,109 @@
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- Semantic Modeling -->
+                <div class="settings-section" id="semantic">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="package" class="w-4 h-4"></i>
+                                <div>
+                                    <div>Semantic Entities</div>
+                                    <div class="card-subtitle">Manage entity YAML files generated from selected tables
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-secondary" id="importSelectedTablesBtn">
+                                    <i data-feather="download" class="w-4 h-4"></i>
+                                    Import Selected Tables
+                                </button>
+                                <button class="btn btn-ghost" id="refreshSemanticEntitiesBtn">
+                                    <i data-feather="refresh-ccw" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600 mb-3">
+                            Select up to 20 tables in the <strong>Tables</strong> tab and import them here. We will
+                            auto-detect PII columns and set sensible grains/time columns.
+                        </div>
+                        <div id="semanticEntityStatus" class="text-sm mb-2"></div>
+                        <div id="semanticEntitiesList"></div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="git-merge" class="w-4 h-4"></i>
+                                <div>
+                                    <div>Relationships</div>
+                                    <div class="card-subtitle">Define joins between entities without leaving the
+                                        settings page</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="semanticRelationshipForm" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="form-label">Relationship Name</label>
+                                <input type="text" id="semanticRelationshipName" class="form-input"
+                                    placeholder="orders_customers" required>
+                            </div>
+                            <div>
+                                <label class="form-label">Type</label>
+                                <select id="semanticRelationshipType" class="form-input" required>
+                                    <option value="">Select type...</option>
+                                    <option value="ONE_TO_ONE">ONE_TO_ONE</option>
+                                    <option value="ONE_TO_MANY">ONE_TO_MANY</option>
+                                    <option value="MANY_TO_ONE">MANY_TO_ONE</option>
+                                    <option value="MANY_TO_MANY">MANY_TO_MANY</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">From Entity</label>
+                                <select id="semanticFromModel" class="form-input" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label">From Column</label>
+                                <select id="semanticFromColumn" class="form-input" required>
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">To Entity</label>
+                                <select id="semanticToModel" class="form-input" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label">To Column</label>
+                                <select id="semanticToColumn" class="form-input" required>
+                                    <option value="">Select column...</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Description (optional)</label>
+                                <input type="text" id="semanticRelationshipDescription" class="form-input"
+                                    placeholder="How these tables relate">
+                            </div>
+                            <div class="md:col-span-2 flex gap-3">
+                                <button type="submit" class="btn btn-primary flex items-center gap-2">
+                                    <i data-feather="save" class="w-4 h-4"></i>
+                                    Save Relationship
+                                </button>
+                                <div id="semanticRelationshipStatus" class="text-sm"></div>
+                            </div>
+                        </form>
+
+                        <div class="card-subtitle mb-2 flex items-center gap-2">
+                            Existing Relationships
+                            <button class="btn btn-ghost p-1" id="refreshSemanticRelationsBtn" title="Refresh list">
+                                <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div id="semanticRelationsList"></div>
+                    </div>
+                </div>
+
                 <!-- Advanced Tasks -->
                 <div class="settings-section" id="tasks">
                     <div class="settings-card">
@@ -848,7 +1075,7 @@
                                     </button>
                                     <div id="reindex-status" class="text-xs mt-2"></div>
                                 </div>
-                                
+
                                 <div class="border rounded-lg p-4">
                                     <h4 class="font-medium text-sm mb-2">Rebuild Knowledge Base</h4>
                                     <p class="text-xs text-gray-600 mb-3">Regenerate schema embeddings</p>
@@ -857,7 +1084,7 @@
                                     </button>
                                     <div id="rebuild-kb-status" class="text-xs mt-2"></div>
                                 </div>
-                                
+
                                 <div class="border rounded-lg p-4">
                                     <h4 class="font-medium text-sm mb-2">Run Regression Tests</h4>
                                     <p class="text-xs text-gray-600 mb-3">Execute test suite for accuracy validation</p>
@@ -867,7 +1094,7 @@
                                     <div id="regression-status" class="text-xs mt-2"></div>
                                 </div>
                             </div>
-                            
+
                             <div class="space-y-3">
                                 <div class="border rounded-lg p-4">
                                     <h4 class="font-medium text-sm mb-2">Validate Experience Store</h4>
@@ -877,7 +1104,7 @@
                                     </button>
                                     <div id="validate-status" class="text-xs mt-2"></div>
                                 </div>
-                                
+
                                 <div class="border rounded-lg p-4">
                                     <h4 class="font-medium text-sm mb-2">Database Optimization</h4>
                                     <p class="text-xs text-gray-600 mb-3">Optimize database performance</p>
@@ -886,7 +1113,7 @@
                                     </button>
                                     <div id="optimize-status" class="text-xs mt-2"></div>
                                 </div>
-                                
+
                                 <div class="border rounded-lg p-4">
                                     <h4 class="font-medium text-sm mb-2">Generate Reports</h4>
                                     <p class="text-xs text-gray-600 mb-3">Create system health reports</p>
@@ -895,10 +1122,11 @@
                                     </button>
                                     <div id="reports-status" class="text-xs mt-2"></div>
                                 </div>
-                                
+
                                 <div class="border rounded-lg p-4 bg-red-50">
                                     <h4 class="font-medium text-sm mb-2 text-red-700">Clean/Reset All Data</h4>
-                                    <p class="text-xs text-red-600 mb-3">⚠️ Clear FAISS index, schema cache, and learning data. Use when switching data sources.</p>
+                                    <p class="text-xs text-red-600 mb-3">⚠️ Clear FAISS index, schema cache, and
+                                        learning data. Use when switching data sources.</p>
                                     <button class="btn btn-danger btn-sm" id="manual-clean">
                                         <i data-feather="trash-2" class="w-3 h-3"></i> Clean All Data
                                     </button>
@@ -907,7 +1135,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="settings-card">
                         <div class="card-header">
                             <div class="card-title">
@@ -926,7 +1154,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Governance Settings -->
                 <div class="settings-section" id="governance">
                     <div class="settings-card">
@@ -965,6 +1193,88 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Users & Access Settings -->
+                <div class="settings-section" id="users">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="key" class="w-5 h-5"></i>
+                                Change Password
+                            </div>
+                        </div>
+                        <div class="card-description">
+                            Update your account password
+                        </div>
+                        <form id="changePasswordForm" class="space-y-4">
+                            <div class="form-group">
+                                <label class="form-label">New Password</label>
+                                <input type="password" id="newPassword" class="form-input" required
+                                    placeholder="••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" id="confirmPassword" class="form-input" required
+                                    placeholder="••••••••">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="submit" class="btn btn-primary" id="savePasswordBtn">
+                                    <i data-feather="lock" class="w-4 h-4"></i>
+                                    Update Password
+                                </button>
+                                <div id="passwordStatus" class="text-sm"></div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="settings-card admin-only">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="user-plus" class="w-5 h-5"></i>
+                                Create New User
+                            </div>
+                        </div>
+                        <form id="createUserForm" class="space-y-4">
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" id="newUsername" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Initial Password</label>
+                                    <input type="password" id="newUserPassword" class="form-input" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Roles (comma separated)</label>
+                                <input type="text" id="newUserRoles" class="form-input" value="user"
+                                    placeholder="admin,user,pii_viewer">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="submit" class="btn btn-success" id="createUserBtn">
+                                    <i data-feather="plus" class="w-4 h-4"></i>
+                                    Create User
+                                </button>
+                                <div id="createUserStatus" class="text-sm"></div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="settings-card admin-only">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i data-feather="users" class="w-5 h-5"></i>
+                                Manage Users
+                            </div>
+                            <button class="btn btn-ghost btn-sm" id="refreshUsersBtn">
+                                <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div id="usersListContainer" class="mt-4">
+                            <!-- Users will be loaded here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -972,38 +1282,193 @@
     <script>
         // Global state
         let currentSection = 'general';
-        
+
         // DOM elements
         const navItems = document.querySelectorAll('.nav-item');
         const sections = document.querySelectorAll('.settings-section');
         const sectionTitle = document.getElementById('sectionTitle');
-        
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeApp();
-            setupEventListeners();
-            loadSettings();
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded, initializing settings...');
+
+            async function safeInit(name, fn) {
+                try {
+                    console.log(`Initializing ${name}...`);
+                    const result = fn();
+                    if (result instanceof Promise) await result;
+                    console.log(`${name} initialized.`);
+                } catch (e) {
+                    console.error(`Error initializing ${name}:`, e);
+                }
+            }
+
+            // Execute initialization steps
+            safeInit('App', initializeApp);
+            safeInit('Event Listeners', setupEventListeners);
+            safeInit('User Management', setupUserManagement); // Call this early
+            safeInit('Inference Save', setupInferenceSaveButton);
+            safeInit('Semantic Section', initializeSemanticSection);
+            safeInit('Settings Data', loadSettings); // This can take time and fail due to routes, but won't block others
         });
-        
+
+        function setupInferenceSaveButton() {
+            const saveBtn = document.getElementById('saveInferenceBtn');
+            if (!saveBtn) {
+                console.error('saveInferenceBtn not found!');
+                return;
+            }
+
+            // Remove any existing listeners by cloning the element
+            const newBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+
+            // Attach the event listener
+            newBtn.addEventListener('click', async function () {
+                const statusEl = document.getElementById('inferenceStatus');
+                const btn = this;
+
+                btn.disabled = true;
+                btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
+                feather.replace();
+
+                try {
+                    const lrElement = document.getElementById('inferenceLearningRate');
+                    if (!lrElement) {
+                        console.error('ERROR: inferenceLearningRate element not found!');
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = '✗ Error: Learning rate field not found';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
+                        feather.replace();
+                        return;
+                    }
+
+                    const lrValue = parseFloat(lrElement.value);
+                    if (isNaN(lrValue)) {
+                        console.error('ERROR: Learning rate value is not a number:', lrElement.value);
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = '✗ Error: Invalid learning rate value';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
+                        feather.replace();
+                        return;
+                    }
+
+                    console.log('Learning rate element found, value:', lrElement.value, 'parsed:', lrValue);
+
+                    // Double-check the element value
+                    const currentLrValue = lrElement.value;
+                    const currentLrParsed = parseFloat(currentLrValue);
+                    console.log('Double-check - Element value:', currentLrValue, 'Parsed:', currentLrParsed);
+
+                    if (isNaN(currentLrParsed)) {
+                        console.error('ERROR: Current learning rate value is not a valid number!', currentLrValue);
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = '✗ Error: Learning rate dropdown has invalid value';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
+                        feather.replace();
+                        return;
+                    }
+
+                    const payload = {
+                        inference_mode: document.getElementById('inferenceMode').value,
+                        temperature: parseFloat(document.getElementById('temperature').value),
+                        learning_rate: currentLrParsed  // Use the double-checked value
+                    };
+                    console.log('Saving inference settings:', payload);
+                    console.log('Payload JSON:', JSON.stringify(payload));
+
+                    if (payload.learning_rate === undefined || payload.learning_rate === null || isNaN(payload.learning_rate)) {
+                        console.error('ERROR: Learning rate is missing or invalid in payload!', payload);
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = '✗ Error: Learning rate is invalid';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
+                        feather.replace();
+                        return;
+                    }
+
+                    const response = await fetch('/api/settings/inference', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+                    console.log('Save response:', result);
+
+                    if (response.ok) {
+                        statusEl.className = 'text-sm text-green-600';
+                        statusEl.textContent = '✓ Settings saved successfully!';
+                        // Update UI with the returned values to ensure consistency
+                        if (result.inference_mode) {
+                            document.getElementById('inferenceMode').value = result.inference_mode;
+                            console.log('Updated inference mode from response:', result.inference_mode);
+                            try {
+                                localStorage.setItem('inferenceMode', result.inference_mode);
+                            } catch (e) {
+                                console.warn('Unable to persist inferenceMode to localStorage:', e);
+                            }
+                        }
+                        if (result.temperature !== undefined) {
+                            document.getElementById('temperature').value = result.temperature;
+                            document.getElementById('tempValue').textContent = result.temperature;
+                            console.log('Updated temperature from response:', result.temperature);
+                        }
+                        if (result.learning_rate !== undefined) {
+                            const lrNum = parseFloat(result.learning_rate);
+                            // Match to closest dropdown option value
+                            let lrValue = '0.3'; // default
+                            if (lrNum <= 0.2) lrValue = '0.1';
+                            else if (lrNum <= 0.4) lrValue = '0.3';
+                            else lrValue = '0.5';
+
+                            const lrElement = document.getElementById('inferenceLearningRate');
+                            if (lrElement) {
+                                lrElement.value = lrValue;
+                                console.log('Updated learning rate from response:', result.learning_rate, '->', lrValue);
+                            } else {
+                                console.error('inferenceLearningRate element not found when updating from response!');
+                            }
+                        }
+                    } else {
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = '✗ Failed to save settings: ' + (result.message || 'Unknown error');
+                    }
+                } catch (error) {
+                    console.error('Error saving inference settings:', error);
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = '✗ Error saving settings: ' + error.message;
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
+                    feather.replace();
+                    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+                }
+            });
+        }
+
         function initializeApp() {
             // Initialize Feather icons
             feather.replace();
         }
-        
+
         function setupEventListeners() {
             // Navigation
             navItems.forEach(item => {
-                item.addEventListener('click', function(e) {
+                item.addEventListener('click', function (e) {
                     e.preventDefault();
                     const section = this.dataset.section;
                     switchSection(section);
                 });
             });
-            
+
             // Advanced Tasks
             setupAdvancedTasks();
         }
-        
+
         function switchSection(sectionName) {
             // Update navigation
             navItems.forEach(item => {
@@ -1012,7 +1477,7 @@
                     item.classList.add('active');
                 }
             });
-            
+
             // Update content
             sections.forEach(section => {
                 section.classList.remove('active');
@@ -1020,7 +1485,7 @@
                     section.classList.add('active');
                 }
             });
-            
+
             // Update title
             const titles = {
                 'general': 'General Settings',
@@ -1029,45 +1494,47 @@
                 'learning': 'Learning Settings',
                 'database': 'Database Settings',
                 'tables': 'Table Management',
+                'semantic': 'Semantic Modeling',
                 'tasks': 'Advanced Tasks',
-                'governance': 'Security & Compliance'
+                'governance': 'Security & Compliance',
+                'users': 'Users & Access'
             };
             sectionTitle.textContent = titles[sectionName] || 'Settings';
-            
+
             currentSection = sectionName;
         }
-        
+
         function setupAdvancedTasks() {
             // Re-index Learning Data
             document.getElementById('manual-reindex').addEventListener('click', async () => {
                 await executeTask('manual-reindex', 'reindex-status', 'Re-index Learning Data', '/api/learn/reindex', 'POST');
             });
-            
+
             // Rebuild Knowledge Base
             document.getElementById('manual-rebuild-kb').addEventListener('click', async () => {
                 await executeTask('manual-rebuild-kb', 'rebuild-kb-status', 'Rebuild Knowledge Base', '/api/training/run', 'POST');
             });
-            
+
             // Run Regression Tests
             document.getElementById('manual-regression').addEventListener('click', async () => {
                 await executeTask('manual-regression', 'regression-status', 'Run Regression Tests', '/api/learn/regression/run', 'POST');
             });
-            
+
             // Validate Experience Store
             document.getElementById('manual-validate').addEventListener('click', async () => {
                 await executeTask('manual-validate', 'validate-status', 'Validate Experience Store', '/api/learn/validate', 'POST');
             });
-            
+
             // Database Optimization
             document.getElementById('manual-optimize').addEventListener('click', async () => {
                 await executeTask('manual-optimize', 'optimize-status', 'Database Optimization', '/api/db/optimize', 'POST');
             });
-            
+
             // Generate Reports
             document.getElementById('manual-reports').addEventListener('click', async () => {
                 await executeTask('manual-reports', 'reports-status', 'Generate Reports', '/api/reports/generate', 'POST');
             });
-            
+
             // Clean/Reset All Data
             document.getElementById('manual-clean').addEventListener('click', async () => {
                 if (confirm('⚠️ WARNING: This will delete all FAISS indexes, schema cache, and learning data.\n\nThis action cannot be undone!\n\nAre you sure you want to continue?')) {
@@ -1075,23 +1542,298 @@
                 }
             });
         }
-        
+
+        // Semantic modeling helpers
+        let semanticEntitiesCache = [];
+        const semanticEntityDetailsCache = {};
+        let semanticRelationsCache = [];
+
+        async function initializeSemanticSection() {
+            const entitiesContainer = document.getElementById('semanticEntitiesList');
+            if (!entitiesContainer) {
+                return;
+            }
+            const importBtn = document.getElementById('importSelectedTablesBtn');
+            const refreshEntitiesBtn = document.getElementById('refreshSemanticEntitiesBtn');
+            const refreshRelationsBtn = document.getElementById('refreshSemanticRelationsBtn');
+            const fromModelSelect = document.getElementById('semanticFromModel');
+            const toModelSelect = document.getElementById('semanticToModel');
+            const relationForm = document.getElementById('semanticRelationshipForm');
+
+            importBtn?.addEventListener('click', handleSemanticImport);
+            refreshEntitiesBtn?.addEventListener('click', refreshSemanticEntities);
+            refreshRelationsBtn?.addEventListener('click', refreshSemanticRelations);
+            fromModelSelect?.addEventListener('change', () => populateSemanticColumns('from'));
+            toModelSelect?.addEventListener('change', () => populateSemanticColumns('to'));
+            relationForm?.addEventListener('submit', submitSemanticRelationship);
+
+            await refreshSemanticEntities();
+            await refreshSemanticRelations();
+        }
+
+        async function refreshSemanticEntities() {
+            const statusEl = document.getElementById('semanticEntityStatus');
+            if (!statusEl) return;
+            statusEl.className = 'text-sm text-gray-600';
+            statusEl.textContent = 'Loading entities...';
+            try {
+                const res = await fetch('/semantic/catalog?type=entity');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load entities');
+                semanticEntitiesCache = data.entities || [];
+                renderSemanticEntities();
+                populateSemanticEntitySelects();
+                statusEl.className = 'text-sm text-green-600';
+                statusEl.textContent = semanticEntitiesCache.length ? `Loaded ${semanticEntitiesCache.length} entities.` : 'No entities yet.';
+            } catch (error) {
+                console.error('Semantic entity load failed:', error);
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = `Error: ${error.message}`;
+            } finally {
+                setTimeout(() => { statusEl.textContent = ''; }, 3500);
+            }
+        }
+
+        function renderSemanticEntities() {
+            const container = document.getElementById('semanticEntitiesList');
+            if (!container) return;
+            if (!semanticEntitiesCache.length) {
+                container.innerHTML = '<div class="p-4 text-sm text-gray-500">No semantic entities found. Import tables to get started.</div>';
+                return;
+            }
+            let rows = '<div class="data-table-row header"><div>Name</div><div>Grain</div><div>Columns</div><div>Actions</div></div>';
+            semanticEntitiesCache.forEach(entity => {
+                rows += `
+                    <div class="data-table-row">
+                        <div>
+                            <div class="font-semibold">${entity.name}</div>
+                            <div class="text-xs text-gray-500">${entity.description || ''}</div>
+                        </div>
+                        <div>${entity.grain || '-'}</div>
+                        <div>${entity.columns || 0}</div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-ghost btn-sm semantic-delete-entity" data-entity="${entity.name}">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = `<div class="data-table">${rows}</div>`;
+            container.querySelectorAll('.semantic-delete-entity').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const entity = btn.dataset.entity;
+                    if (!entity) return;
+                    if (!confirm(`Delete entity "${entity}"?`)) return;
+                    try {
+                        const res = await fetch(`/semantic/entities/${encodeURIComponent(entity)}`, { method: 'DELETE' });
+                        const result = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(result.error || 'Delete failed');
+                        await refreshSemanticEntities();
+                        await refreshSemanticRelations();
+                    } catch (error) {
+                        alert(`Failed to delete entity: ${error.message}`);
+                    }
+                });
+            });
+        }
+
+        function populateSemanticEntitySelects() {
+            const selects = [document.getElementById('semanticFromModel'), document.getElementById('semanticToModel')];
+            selects.forEach(select => {
+                if (!select) return;
+                select.innerHTML = '<option value="">Select entity...</option>';
+                semanticEntitiesCache.forEach(entity => {
+                    const opt = document.createElement('option');
+                    opt.value = entity.name;
+                    opt.textContent = entity.name;
+                    select.appendChild(opt);
+                });
+            });
+            populateSemanticColumns('from');
+            populateSemanticColumns('to');
+        }
+
+        async function populateSemanticColumns(side) {
+            const modelSelect = document.getElementById(side === 'from' ? 'semanticFromModel' : 'semanticToModel');
+            const columnSelect = document.getElementById(side === 'from' ? 'semanticFromColumn' : 'semanticToColumn');
+            if (!modelSelect || !columnSelect) return;
+            columnSelect.innerHTML = '<option value="">Select column...</option>';
+            const name = modelSelect.value;
+            if (!name) return;
+            try {
+                const detail = await fetchSemanticEntityDetail(name);
+                (detail.columns || []).forEach(col => {
+                    const opt = document.createElement('option');
+                    opt.value = col.name;
+                    const suffix = col.primary ? ' (PK)' : '';
+                    opt.textContent = `${col.name}${suffix}`;
+                    columnSelect.appendChild(opt);
+                });
+            } catch (error) {
+                console.warn('Failed to load columns for', name, error);
+                columnSelect.innerHTML = '<option value="">No columns available</option>';
+            }
+        }
+
+        async function fetchSemanticEntityDetail(name) {
+            if (semanticEntityDetailsCache[name]) {
+                return semanticEntityDetailsCache[name];
+            }
+            const res = await fetch(`/semantic/entity/${encodeURIComponent(name)}`);
+            const data = await res.json();
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Failed to load entity detail');
+            }
+            semanticEntityDetailsCache[name] = data;
+            return data;
+        }
+
+        async function handleSemanticImport() {
+            const statusEl = document.getElementById('semanticEntityStatus');
+            statusEl.className = 'text-sm text-gray-600';
+            statusEl.textContent = 'Checking selected tables...';
+            try {
+                const selResponse = await fetch('/api/settings/tables/list');
+                const { selected = [] } = await selResponse.json();
+                if (!selected.length) {
+                    statusEl.className = 'text-sm text-red-600';
+                    statusEl.textContent = 'Select tables in the Tables tab before importing.';
+                    return;
+                }
+                statusEl.textContent = 'Importing tables...';
+                const importResponse = await fetch('/semantic/entities/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tables: selected, detect_pii: true })
+                });
+                const result = await importResponse.json();
+                if (!importResponse.ok) {
+                    throw new Error(result.error || 'Import failed');
+                }
+                statusEl.className = 'text-sm text-green-600';
+                statusEl.textContent = `Imported ${result.entities?.length || 0} entities.`;
+                await refreshSemanticEntities();
+            } catch (error) {
+                console.error('Import error:', error);
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = `Import failed: ${error.message}`;
+            } finally {
+                setTimeout(() => { statusEl.textContent = ''; }, 4000);
+            }
+        }
+
+        async function refreshSemanticRelations() {
+            const listEl = document.getElementById('semanticRelationsList');
+            if (!listEl) return;
+            try {
+                const res = await fetch('/semantic/relations');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load relationships');
+                semanticRelationsCache = data.relations || [];
+                renderSemanticRelations();
+            } catch (error) {
+                console.error('Failed to load relationships:', error);
+                listEl.innerHTML = `<div class="p-4 text-sm text-red-600">Error: ${error.message}</div>`;
+            }
+        }
+
+        function renderSemanticRelations() {
+            const listEl = document.getElementById('semanticRelationsList');
+            if (!listEl) return;
+            if (!semanticRelationsCache.length) {
+                listEl.innerHTML = '<div class="p-4 text-sm text-gray-500">No relationships defined yet.</div>';
+                return;
+            }
+            let rows = '<div class="data-table-row header"><div>Name</div><div>From</div><div>To</div><div>Actions</div></div>';
+            semanticRelationsCache.forEach(rel => {
+                rows += `
+                    <div class="data-table-row">
+                        <div>
+                            <div class="font-semibold">${rel.name}</div>
+                            <div class="text-xs text-gray-500">${rel.description || ''}</div>
+                        </div>
+                        <div>${rel.from}</div>
+                        <div>${rel.to}</div>
+                        <div>
+                            <button class="btn btn-ghost btn-sm semantic-delete-rel" data-rel="${rel.name}">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            listEl.innerHTML = `<div class="data-table">${rows}</div>`;
+            listEl.querySelectorAll('.semantic-delete-rel').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const relName = btn.dataset.rel;
+                    if (!relName || !confirm(`Delete relationship "${relName}"?`)) return;
+                    try {
+                        const res = await fetch(`/semantic/relations/${encodeURIComponent(relName)}`, { method: 'DELETE' });
+                        const result = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(result.error || 'Delete failed');
+                        await refreshSemanticRelations();
+                        await refreshSemanticEntities();
+                    } catch (error) {
+                        alert(`Failed to delete relationship: ${error.message}`);
+                    }
+                });
+            });
+        }
+
+        async function submitSemanticRelationship(e) {
+            e.preventDefault();
+            const statusEl = document.getElementById('semanticRelationshipStatus');
+            statusEl.className = 'text-sm text-gray-600';
+            statusEl.textContent = 'Saving relationship...';
+            const payload = {
+                name: document.getElementById('semanticRelationshipName').value.trim(),
+                type: document.getElementById('semanticRelationshipType').value,
+                description: document.getElementById('semanticRelationshipDescription').value,
+                from: {
+                    model: document.getElementById('semanticFromModel').value,
+                    column: document.getElementById('semanticFromColumn').value
+                },
+                to: {
+                    model: document.getElementById('semanticToModel').value,
+                    column: document.getElementById('semanticToColumn').value
+                }
+            };
+            try {
+                const res = await fetch('/semantic/relations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Save failed');
+                statusEl.className = 'text-sm text-green-600';
+                statusEl.textContent = 'Relationship saved.';
+                (document.getElementById('semanticRelationshipForm') || {}).reset?.();
+                populateSemanticColumns('from');
+                populateSemanticColumns('to');
+                await refreshSemanticRelations();
+            } catch (error) {
+                console.error('Failed to save relationship:', error);
+                statusEl.className = 'text-sm text-red-600';
+                statusEl.textContent = `Error: ${error.message}`;
+            } finally {
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        }
+
         async function executeTask(buttonId, statusId, taskName, endpoint, method) {
             const button = document.getElementById(buttonId);
             const status = document.getElementById(statusId);
-            
+
             // Set loading state
             button.disabled = true;
             button.innerHTML = '<i data-feather="loader" class="w-3 h-3"></i> Running...';
             feather.replace();
-            
+
             setTaskStatus(statusId, 'loading', 'Running...');
             logTask(taskName, 'loading', 'Starting task...');
-            
+
             try {
                 const response = await fetch(endpoint, { method });
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     setTaskStatus(statusId, 'success', 'Completed successfully');
                     logTask(taskName, 'success', `Task completed: ${result.message || 'Success'}`);
@@ -1108,27 +1850,27 @@
                 // Reset button
                 button.disabled = false;
                 const originalText = buttonId === 'manual-reindex' ? 'Re-index Now' :
-                                   buttonId === 'manual-rebuild-kb' ? 'Rebuild KB' :
-                                   buttonId === 'manual-regression' ? 'Run Tests' :
-                                   buttonId === 'manual-validate' ? 'Validate' :
-                                   buttonId === 'manual-optimize' ? 'Optimize' :
-                                   'Generate';
-                button.innerHTML = `<i data-feather="${buttonId === 'manual-reindex' ? 'refresh-ccw' : 
-                                                      buttonId === 'manual-rebuild-kb' ? 'database' :
-                                                      buttonId === 'manual-regression' ? 'play' :
-                                                      buttonId === 'manual-validate' ? 'check-circle' :
-                                                      buttonId === 'manual-optimize' ? 'activity' :
-                                                      'file-text'}" class="w-3 h-3"></i> ${originalText}`;
+                    buttonId === 'manual-rebuild-kb' ? 'Rebuild KB' :
+                        buttonId === 'manual-regression' ? 'Run Tests' :
+                            buttonId === 'manual-validate' ? 'Validate' :
+                                buttonId === 'manual-optimize' ? 'Optimize' :
+                                    'Generate';
+                button.innerHTML = `<i data-feather="${buttonId === 'manual-reindex' ? 'refresh-ccw' :
+                    buttonId === 'manual-rebuild-kb' ? 'database' :
+                        buttonId === 'manual-regression' ? 'play' :
+                            buttonId === 'manual-validate' ? 'check-circle' :
+                                buttonId === 'manual-optimize' ? 'activity' :
+                                    'file-text'}" class="w-3 h-3"></i> ${originalText}`;
                 feather.replace();
             }
         }
-        
+
         function setTaskStatus(statusId, status, message) {
             const statusEl = document.getElementById(statusId);
             statusEl.className = `task-status ${status}`;
             statusEl.textContent = message;
         }
-        
+
         function logTask(taskName, status, message) {
             const log = document.getElementById('taskLog');
             const time = new Date().toLocaleTimeString();
@@ -1141,7 +1883,7 @@
             log.appendChild(entry);
             log.scrollTop = log.scrollHeight;
         }
-        
+
         async function loadSettings() {
             try {
                 // Load theme setting
@@ -1153,27 +1895,69 @@
                 } catch (e) {
                     console.warn('Theme loading failed:', e);
                 }
-                
+
                 // Load chat limit
                 const chatLimitResponse = await fetch('/api/config/chat_limit');
                 const chatLimitData = await chatLimitResponse.json();
                 document.getElementById('chatLimit').value = chatLimitData.limit || 5;
-                
+
                 // Load auto summarize
                 const autoSumResponse = await fetch('/api/settings/auto_summarize');
                 const autoSumData = await autoSumResponse.json();
                 document.getElementById('autoSummarize').checked = autoSumData.auto_summarize || false;
-                
-                // Load inference mode
+
+                // Load inference mode, temperature, and learning rate
                 const inferenceResponse = await fetch('/api/settings/inference');
                 const inferenceData = await inferenceResponse.json();
-                document.getElementById('inferenceMode').value = inferenceData.inference_mode || 'gemini';
-                
+                console.log('Loaded inference settings:', inferenceData);
+                const modeValue = inferenceData.inference_mode || 'gemini';
+                console.log('Setting inference mode to:', modeValue);
+                document.getElementById('inferenceMode').value = modeValue;
+                try {
+                    localStorage.setItem('inferenceMode', modeValue);
+                } catch (e) {
+                    console.warn('Unable to persist inferenceMode to localStorage:', e);
+                }
+                if (inferenceData.temperature !== undefined) {
+                    document.getElementById('temperature').value = inferenceData.temperature;
+                    document.getElementById('tempValue').textContent = inferenceData.temperature;
+                }
+                if (inferenceData.learning_rate !== undefined) {
+                    const lrNum = parseFloat(inferenceData.learning_rate);
+                    // Match to closest dropdown option value
+                    const lrOptions = ['0.1', '0.3', '0.5'];
+                    let lrValue = '0.3'; // default
+                    if (lrNum <= 0.2) lrValue = '0.1';
+                    else if (lrNum <= 0.4) lrValue = '0.3';
+                    else lrValue = '0.5';
+
+                    console.log('Setting learning rate to:', lrValue, 'from:', inferenceData.learning_rate, '(parsed:', lrNum, ')');
+                    const lrElement = document.getElementById('inferenceLearningRate');
+                    if (lrElement) {
+                        lrElement.value = lrValue;
+                        // Verify the value was set
+                        const actualValue = lrElement.value;
+                        console.log('Learning rate after setting:', actualValue, 'matches?', actualValue === lrValue);
+                        if (actualValue !== lrValue) {
+                            console.error('Learning rate mismatch! Expected:', lrValue, 'Got:', actualValue);
+                            // Force set it again
+                            lrElement.value = lrValue;
+                            console.log('Forced set again, new value:', lrElement.value);
+                        }
+                    } else {
+                        console.error('inferenceLearningRate element not found!');
+                    }
+                } else {
+                    console.warn('learning_rate not found in response:', inferenceData);
+                }
+                // Verify the value was set
+                console.log('Inference mode after setting:', document.getElementById('inferenceMode').value);
+
                 // Load learning settings
                 const learningResponse = await fetch('/api/settings/learning');
                 const learningData = await learningResponse.json();
                 document.getElementById('autoLogLearning').checked = learningData.auto_log_learning || false;
-                
+
                 // Load governance settings
                 try {
                     const govResponse = await fetch('/api/settings/governance');
@@ -1185,29 +1969,60 @@
                 } catch (e) {
                     console.warn('Governance settings loading failed:', e);
                 }
-                
+
                 // Load database info
                 const dbResponse = await fetch('/api/settings/db/current');
                 const dbData = await dbResponse.json();
-                document.getElementById('currentDb').value = dbData.database || 'Unknown';
-                
+
+                // Populate inputs
+                document.getElementById('dbHost').value = dbData.server || '';
+                document.getElementById('dbName').value = dbData.database || '';
+                document.getElementById('dbPort').value = dbData.port || '';
+                document.getElementById('dbUsername').value = dbData.uid || '';
+                document.getElementById('currentDb').value = dbData.database || 'Not Connected';
+                // Populate encryption and trust checkboxes
+                document.getElementById('dbEncrypt').checked = dbData.encrypt !== false;
+                document.getElementById('dbTrust').checked = dbData.trust_server_certificate !== false;
+
+                // Update status indicator
+                const indicator = document.getElementById('connectionIndicator');
+                const statusText = document.getElementById('connectionStatusText');
+                if (dbData.configured) {
+                    indicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                    statusText.textContent = 'Connected';
+                } else {
+                    indicator.className = 'w-3 h-3 bg-gray-300 rounded-full';
+                    statusText.textContent = 'Not Configured';
+                }
+
                 // Load tables with checkboxes
                 await loadTablesWithSelection();
-                
+
             } catch (error) {
                 console.error('Error loading settings:', error);
             }
         }
-        
+
         async function loadTablesWithSelection() {
             try {
                 const tablesResponse = await fetch('/api/settings/tables/list');
                 const tablesData = await tablesResponse.json();
                 const tablesList = document.getElementById('tablesList');
+                const filterInput = document.getElementById('tableFilter');
                 tablesList.innerHTML = '';
-                
-                if (tablesData.tables && tablesData.tables.length > 0) {
-                    tablesData.tables.forEach(table => {
+
+                const allTables = tablesData.tables || [];
+                const selectedSet = new Set(tablesData.selected || []);
+
+                const renderTables = (filterText = '') => {
+                    tablesList.innerHTML = '';
+                    const term = filterText.trim().toLowerCase();
+                    const filtered = term ? allTables.filter(t => t.toLowerCase().includes(term)) : allTables;
+                    if (filtered.length === 0) {
+                        tablesList.innerHTML = '<p class="text-sm text-gray-500">No tables match this filter</p>';
+                        return;
+                    }
+                    filtered.forEach(table => {
                         const tableItem = document.createElement('label');
                         tableItem.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100';
                         tableItem.innerHTML = `
@@ -1216,64 +2031,64 @@
                         `;
                         tablesList.appendChild(tableItem);
                     });
-                    
-                    // Add event listeners to update count
                     const checkboxes = tablesList.querySelectorAll('.table-check');
                     checkboxes.forEach(cb => {
-                        cb.checked = true; // Select all by default
+                        cb.checked = selectedSet.has(cb.value);
                         cb.addEventListener('change', updateSelectedCount);
                     });
-                    
                     updateSelectedCount();
-                } else {
-                    tablesList.innerHTML = '<p class="text-sm text-gray-500">No tables available</p>';
-                }
+                };
+
+                renderTables();
+                filterInput?.addEventListener('input', (e) => {
+                    renderTables(e.target.value || '');
+                });
             } catch (error) {
                 console.error('Error loading tables:', error);
             }
         }
-        
+
         function updateSelectedCount() {
             const checkboxes = document.querySelectorAll('.table-check:checked');
             document.getElementById('selectedTableCount').textContent = `${checkboxes.length} selected`;
         }
-        
+
         // Select/Deselect all tables
-        document.getElementById('selectAllTablesBtn').addEventListener('click', function() {
+        document.getElementById('selectAllTablesBtn').addEventListener('click', function () {
             const checkboxes = document.querySelectorAll('.table-check');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            
+
             checkboxes.forEach(cb => {
                 cb.checked = !allChecked;
             });
-            
-            this.innerHTML = allChecked ? 
+
+            this.innerHTML = allChecked ?
                 '<i data-feather="check-square" class="w-3 h-3"></i> Select All' :
                 '<i data-feather="square" class="w-3 h-3"></i> Deselect All';
             feather.replace();
             updateSelectedCount();
         });
-        
+
         // Temperature slider update
-        document.getElementById('temperature').addEventListener('input', function() {
+        document.getElementById('temperature').addEventListener('input', function () {
             document.getElementById('tempValue').textContent = this.value;
         });
-        
+
         // Save Inference Settings
         // Theme save handler
-        document.getElementById('saveThemeBtn').addEventListener('click', async function() {
+        document.getElementById('saveThemeBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('themeStatus');
             const btn = this;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
             feather.replace();
-            
+
             try {
                 const selectedTheme = document.querySelector('input[name="theme"]:checked')?.value || 'blue';
                 localStorage.setItem('theme', selectedTheme);
                 document.documentElement.classList.toggle('light-grey', selectedTheme === 'light-grey');
-                
+
                 statusEl.className = 'text-sm text-green-600';
                 statusEl.textContent = '✓ Theme saved successfully!';
             } catch (error) {
@@ -1286,53 +2101,18 @@
                 setTimeout(() => { statusEl.textContent = ''; }, 3000);
             }
         });
-        
-        document.getElementById('saveInferenceBtn').addEventListener('click', async function() {
-            const statusEl = document.getElementById('inferenceStatus');
-            const btn = this;
-            
-            btn.disabled = true;
-            btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
-            feather.replace();
-            
-            try {
-                const response = await fetch('/api/settings/inference', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        inference_mode: document.getElementById('inferenceMode').value,
-                        temperature: parseFloat(document.getElementById('temperature').value)
-                    })
-                });
-                
-                if (response.ok) {
-                    statusEl.className = 'text-sm text-green-600';
-                    statusEl.textContent = '✓ Settings saved successfully!';
-                    // Keep the values - they're already set in the UI
-                } else {
-                    statusEl.className = 'text-sm text-red-600';
-                    statusEl.textContent = '✗ Failed to save settings';
-                }
-            } catch (error) {
-                statusEl.className = 'text-sm text-red-600';
-                statusEl.textContent = '✗ Error saving settings';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i data-feather="save" class="w-4 h-4"></i> Save Inference Settings';
-                feather.replace();
-                setTimeout(() => { statusEl.textContent = ''; }, 3000);
-            }
-        });
-        
+
+        // Save Inference Settings button is now set up in setupInferenceSaveButton() function
+
         // Save Learning Settings
-        document.getElementById('saveLearningBtn').addEventListener('click', async function() {
+        document.getElementById('saveLearningBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('learningStatus');
             const btn = this;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
             feather.replace();
-            
+
             try {
                 const response = await fetch('/api/settings/learning', {
                     method: 'POST',
@@ -1342,7 +2122,7 @@
                         learning_rate: parseFloat(document.getElementById('learningRate').value)
                     })
                 });
-                
+
                 if (response.ok) {
                     statusEl.className = 'text-sm text-green-600';
                     statusEl.textContent = '✓ Settings saved successfully!';
@@ -1361,34 +2141,34 @@
                 setTimeout(() => { statusEl.textContent = ''; }, 3000);
             }
         });
-        
+
         // Save Governance Settings
-        document.getElementById('saveGovernanceBtn').addEventListener('click', async function() {
+        document.getElementById('saveGovernanceBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('governanceStatus');
             const btn = this;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
             feather.replace();
-            
+
             try {
                 const payload = {
                     pii_masking: document.getElementById('piiMasking').checked,
                     audit_logging: document.getElementById('auditLogging').checked,
                     data_retention: parseInt(document.getElementById('dataRetention').value)
                 };
-                
+
                 console.log('Saving governance settings:', payload);
-                
+
                 const response = await fetch('/api/settings/governance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
+
                 const result = await response.json();
                 console.log('Governance save response:', result);
-                
+
                 if (response.ok && result.status === 'success') {
                     statusEl.className = 'text-sm text-green-600';
                     statusEl.textContent = '✓ ' + (result.message || 'Settings saved successfully!');
@@ -1406,20 +2186,20 @@
                 setTimeout(() => { statusEl.textContent = ''; }, 3000);
             }
         });
-        
+
         // Save table selection
-        document.getElementById('saveTablesBtn').addEventListener('click', async function() {
+        document.getElementById('saveTablesBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('tablesStatus');
             try {
                 const checkboxes = document.querySelectorAll('.table-check:checked');
                 const selectedTables = Array.from(checkboxes).map(cb => cb.value);
-                
+
                 const response = await fetch('/api/settings/tables/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tables: selectedTables })
                 });
-                
+
                 if (response.ok) {
                     statusEl.className = 'text-sm text-green-600';
                     statusEl.textContent = 'Table selection saved successfully!';
@@ -1427,23 +2207,23 @@
                     statusEl.className = 'text-sm text-red-600';
                     statusEl.textContent = 'Failed to save selection';
                 }
-                
+
                 setTimeout(() => { statusEl.textContent = ''; }, 3000);
             } catch (error) {
                 statusEl.className = 'text-sm text-red-600';
                 statusEl.textContent = 'Error saving selection';
             }
         });
-        
+
         // Test database connection
-        document.getElementById('testConnectionBtn').addEventListener('click', async function() {
+        document.getElementById('testConnectionBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('connectionStatus');
             const btn = this;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Testing...';
             feather.replace();
-            
+
             try {
                 const connectionData = {
                     server: document.getElementById('dbHost').value,
@@ -1451,18 +2231,20 @@
                     port: parseInt(document.getElementById('dbPort').value) || 1433,
                     uid: document.getElementById('dbUsername').value,
                     pwd: document.getElementById('dbPassword').value,
+                    encrypt: true,
+                    trust_server_certificate: true,
                     driver: 'ODBC Driver 17 for SQL Server',
                     timeout: 5
                 };
-                
+
                 const response = await fetch('/api/settings/db/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(connectionData)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok && result.status === 'success') {
                     statusEl.className = 'text-sm text-green-600';
                     statusEl.textContent = '✓ ' + (result.message || 'Connection successful!');
@@ -1480,16 +2262,16 @@
                 setTimeout(() => { statusEl.textContent = ''; }, 5000);
             }
         });
-        
+
         // Save database connection
-        document.getElementById('saveConnectionBtn').addEventListener('click', async function() {
+        document.getElementById('saveConnectionBtn').addEventListener('click', async function () {
             const statusEl = document.getElementById('connectionStatus');
             const btn = this;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<i data-feather="loader" class="w-4 h-4"></i> Saving...';
             feather.replace();
-            
+
             try {
                 const connectionData = {
                     server: document.getElementById('dbHost').value,
@@ -1500,18 +2282,28 @@
                     driver: 'ODBC Driver 17 for SQL Server',
                     timeout: 15
                 };
-                
+
                 const response = await fetch('/api/settings/db/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(connectionData)
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     statusEl.className = 'text-sm text-green-600';
                     statusEl.textContent = '✓ ' + (result.message || 'Connection saved successfully!');
+
+                    // Refresh table list immediately after save
+                    await loadTablesWithSelection();
+
+                    // Update header if possible
+                    document.getElementById('currentDb').value = connectionData.database || 'Unknown';
+                    const indicator = document.getElementById('connectionIndicator');
+                    const statusText = document.getElementById('connectionStatusText');
+                    indicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                    statusText.textContent = 'Connected';
                 } else {
                     statusEl.className = 'text-sm text-red-600';
                     statusEl.textContent = `✗ ${result.message || result.error || 'Unknown error'}`;
@@ -1526,6 +2318,129 @@
                 setTimeout(() => { statusEl.textContent = ''; }, 5000);
             }
         });
+
+        async function setupUserManagement() {
+            const changePasswordForm = document.getElementById('changePasswordForm');
+            const createUserForm = document.getElementById('createUserForm');
+            const refreshUsersBtn = document.getElementById('refreshUsersBtn');
+
+            if (changePasswordForm) {
+                changePasswordForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const statusEl = document.getElementById('passwordStatus');
+                    const newPwd = document.getElementById('newPassword').value;
+                    const confirmPwd = document.getElementById('confirmPassword').value;
+
+                    if (newPwd !== confirmPwd) {
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = 'Passwords do not match';
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch('/api/auth/users/password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: newPwd })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            statusEl.className = 'text-sm text-green-600';
+                            statusEl.textContent = 'Password updated successfully';
+                            changePasswordForm.reset();
+                        } else {
+                            statusEl.className = 'text-sm text-red-600';
+                            statusEl.textContent = data.error || 'Update failed';
+                        }
+                    } catch (err) {
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = 'Connection error';
+                    }
+                    setTimeout(() => statusEl.textContent = '', 3000);
+                });
+            }
+
+            if (createUserForm) {
+                createUserForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const statusEl = document.getElementById('createUserStatus');
+                    const payload = {
+                        username: document.getElementById('newUsername').value,
+                        password: document.getElementById('newUserPassword').value,
+                        roles: document.getElementById('newUserRoles').value
+                    };
+
+                    try {
+                        const res = await fetch('/api/auth/users/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            statusEl.className = 'text-sm text-green-600';
+                            statusEl.textContent = 'User created successfully';
+                            createUserForm.reset();
+                            await loadUsersList();
+                        } else {
+                            statusEl.className = 'text-sm text-red-600';
+                            statusEl.textContent = data.error || 'Creation failed';
+                        }
+                    } catch (err) {
+                        statusEl.className = 'text-sm text-red-600';
+                        statusEl.textContent = 'Connection error';
+                    }
+                    setTimeout(() => statusEl.textContent = '', 3000);
+                });
+            }
+
+            if (refreshUsersBtn) {
+                refreshUsersBtn.addEventListener('click', loadUsersList);
+            }
+
+            await loadUsersList();
+        }
+
+        async function loadUsersList() {
+            const container = document.getElementById('usersListContainer');
+            if (!container) return;
+
+            try {
+                const res = await fetch('/api/auth/users');
+                const data = await res.json();
+
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+                        container.innerHTML = '<p class="text-sm text-gray-500 italic">User management requires administrator privileges.</p>';
+                    }
+                    return;
+                }
+
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+
+                if (data.users && data.users.length > 0) {
+                    let html = '<div class="data-table"><div class="data-table-row header"><div>Username</div><div>Roles</div><div>ID</div></div>';
+                    data.users.forEach(u => {
+                        html += `
+                            <div class="data-table-row">
+                                <div class="font-medium">${u.username}</div>
+                                <div><span class="chip">${u.roles}</span></div>
+                                <div class="text-xs text-gray-400 font-mono">${u.id.substring(0, 8)}...</div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500">No other users found.</p>';
+                }
+            } catch (err) {
+                console.error('Failed to load users:', err);
+                container.innerHTML = '<p class="text-sm text-red-500">Failed to load users.</p>';
+            }
+        }
     </script>
 </body>
+
 </html>

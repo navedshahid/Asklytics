@@ -1,0 +1,12 @@
+name: myrelationship_claim
+from:
+  model: ecs_claimtable
+  column: RECID
+to:
+  model: ecs_claimdefect
+  column: RECID
+type: ONE_TO_MANY
+condition: ecs_claimtable.RECID = ecs_claimdefect.RECID
+description: 'claim id '
+tags:
+- user_defined

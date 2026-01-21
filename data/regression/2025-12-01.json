@@ -1,0 +1,44 @@
+{
+  "summary": {
+    "passed": 0,
+    "failed": 5,
+    "duration_ms": 40498
+  },
+  "results": [
+    {
+      "id": "test_1",
+      "status": "fail",
+      "reason": "Gemini call failed after retries: 404 models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "sql": "",
+      "exec_ms": null
+    },
+    {
+      "id": "test_2",
+      "status": "fail",
+      "reason": "Gemini call failed after retries: 404 models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "sql": "",
+      "exec_ms": null
+    },
+    {
+      "id": "test_3",
+      "status": "fail",
+      "reason": "Gemini call failed after retries: 404 models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "sql": "",
+      "exec_ms": null
+    },
+    {
+      "id": "test_4",
+      "status": "fail",
+      "reason": "Gemini call failed after retries: 404 models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "sql": "",
+      "exec_ms": null
+    },
+    {
+      "id": "test_5",
+      "status": "fail",
+      "reason": "Gemini call failed after retries: 404 models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+      "sql": "",
+      "exec_ms": null
+    }
+  ]
+}
